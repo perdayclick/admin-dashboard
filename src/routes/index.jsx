@@ -4,6 +4,8 @@ import MainLayout from '../layouts/MainLayout'
 import Dashboard from '../pages/Dashboard'
 import Login from '../pages/Login'
 import Users from '../pages/Users'
+import Workers from '../pages/Workers'
+import Employers from '../pages/Employers'
 import Placeholder from '../pages/Placeholder'
 
 export const router = createBrowserRouter([
@@ -22,7 +24,8 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', element: <Dashboard /> },
       { path: 'users', element: <Users /> },
-      { path: 'employers', element: <Placeholder title="Employers" /> },
+      { path: 'workers', element: <Workers /> },
+      { path: 'employers', element: <Employers /> },
       { path: 'agents', element: <Placeholder title="Agents" /> },
       { path: 'jobs', element: <Placeholder title="Jobs & Tasks" /> },
       { path: 'payments', element: <Placeholder title="Payments" /> },

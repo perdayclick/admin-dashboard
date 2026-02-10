@@ -6,6 +6,7 @@ import './MainLayout.css'
 const SIDEBAR_LINKS = [
   { to: '/dashboard', label: 'Overview', icon: 'dashboard' },
   { to: '/users', label: 'Users', icon: 'users' },
+  { to: '/workers', label: 'Workers', icon: 'worker' },
   { to: '/employers', label: 'Employers', icon: 'building' },
   { to: '/agents', label: 'Agents', icon: 'agent' },
   { to: '/jobs', label: 'Jobs & Tasks', icon: 'briefcase' },
@@ -24,6 +25,10 @@ const iconSvg = (name) => {
     case 'users':
       return (
         <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      )
+    case 'worker':
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M12 11v4M10 13h4"/></svg>
       )
     case 'building':
       return (
@@ -109,9 +114,6 @@ export default function MainLayout() {
             >
               {iconSvg(icon)}
               <span>{label}</span>
-              {label === 'Users' && (
-                <svg className="sidebar-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
-              )}
             </NavLink>
           ))}
         </nav>
