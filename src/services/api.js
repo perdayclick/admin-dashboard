@@ -83,3 +83,41 @@ export const rolesApi = {
     return apiRequest(`/api/admin/roles${q ? `?${q}` : ''}`)
   },
 }
+
+// Workers (admin uses /api/worker/workers with admin token)
+export const workersApi = {
+  list: (params = {}) => {
+    const sp = new URLSearchParams()
+    if (params.page) sp.set('page', params.page)
+    if (params.limit) sp.set('limit', params.limit)
+    if (params.search) sp.set('search', params.search)
+    const q = sp.toString()
+    return apiRequest(`/api/worker/workers${q ? `?${q}` : ''}`)
+  },
+  get: (workerId) => apiRequest(`/api/worker/workers/${workerId}`),
+  create: (body) =>
+    apiRequest('/api/worker/workers', { method: 'POST', body: JSON.stringify(body) }),
+  update: (workerId, body) =>
+    apiRequest(`/api/worker/workers/${workerId}`, { method: 'PUT', body: JSON.stringify(body) }),
+  delete: (workerId) =>
+    apiRequest(`/api/worker/workers/${workerId}`, { method: 'DELETE' }),
+}
+
+// Employers (admin uses /api/employer/employers with admin token)
+export const employersApi = {
+  list: (params = {}) => {
+    const sp = new URLSearchParams()
+    if (params.page) sp.set('page', params.page)
+    if (params.limit) sp.set('limit', params.limit)
+    if (params.search) sp.set('search', params.search)
+    const q = sp.toString()
+    return apiRequest(`/api/employer/employers${q ? `?${q}` : ''}`)
+  },
+  get: (employerId) => apiRequest(`/api/employer/employers/${employerId}`),
+  create: (body) =>
+    apiRequest('/api/employer/employers', { method: 'POST', body: JSON.stringify(body) }),
+  update: (employerId, body) =>
+    apiRequest(`/api/employer/employers/${employerId}`, { method: 'PUT', body: JSON.stringify(body) }),
+  delete: (employerId) =>
+    apiRequest(`/api/employer/employers/${employerId}`, { method: 'DELETE' }),
+}

@@ -1,28 +1,33 @@
 import { useState, useEffect, useCallback } from 'react'
 import { usersApi, rolesApi } from '../services/api'
+import { getErrorMessage } from '../utils/format'
+import {
+  PageHeader,
+  SummaryCard,
+  SearchToolbar,
+  DataTable,
+  TableEmptyRow,
+  UserCell,
+  TableActionButtons,
+  Pagination,
+  Alert,
+  Button,
+} from '../components/ui'
 import UserForm from '../components/UserForm'
 import UserView from '../components/UserView'
 import ConfirmModal from '../components/ConfirmModal'
-import './Users.css'
+import '../styles/ManagementPage.css'
 
 function getRoleName(user) {
   const r = user?.roleId
-  if (!r) return '—'
-  return typeof r === 'object' && r.name ? r.name : '—'
+  if (!r) return '-'
+  return typeof r === 'object' && r.name ? r.name : '-'
 }
 
 function getStatus(user) {
-  if (user?.isBlocked) return { label: 'Suspended', className: 'status-suspended' }
-  if (user?.isActive) return { label: 'Active', className: 'status-active' }
-  return { label: 'Inactive', className: 'status-inactive' }
-}
-
-function initials(nameOrEmail) {
-  if (!nameOrEmail) return '—'
-  const s = String(nameOrEmail).trim()
-  const parts = s.split(/[\s@.]/).filter(Boolean)
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
-  return s.slice(0, 2).toUpperCase()
+  if (user?.isBlocked) return { label: 'Suspended', statusKey: 'suspended' }
+  if (user?.isActive) return { label: 'Active', statusKey: 'active' }
+  return { label: 'Inactive', statusKey: 'inactive' }
 }
 
 export default function Users() {
@@ -54,8 +59,7 @@ export default function Users() {
       setUsers(data.users || [])
       setPagination(data.pagination || { page: 1, limit: 10, total: 0, pages: 0 })
     } catch (err) {
-      const msg = err.body?.message || err.body?.error || err.message || 'Failed to load users'
-      setError(typeof msg === 'string' ? msg : 'Request failed')
+      setError(getErrorMessage(err, 'Failed to load users'))
       setUsers([])
     } finally {
       setLoading(false)
@@ -75,7 +79,7 @@ export default function Users() {
 
   useEffect(() => {
     fetchUsers(pagination.page)
-  }, [fetchUsers, pagination.page, roleFilter, search])
+  }, [fetchUsers, pagination.page])
 
   useEffect(() => {
     fetchRoles()
@@ -84,7 +88,7 @@ export default function Users() {
   const handleSearchSubmit = (e) => {
     e.preventDefault()
     setPagination((p) => ({ ...p, page: 1 }))
-    fetchUsers(1) // refetch with current search/filters
+    fetchUsers(1)
   }
 
   const handleCreate = async (values) => {
@@ -95,8 +99,7 @@ export default function Users() {
       setCreateOpen(false)
       fetchUsers(pagination.page)
     } catch (err) {
-      const msg = err.body?.message || err.body?.error || err.message || 'Create failed'
-      setFormError(typeof msg === 'string' ? msg : 'Request failed')
+      setFormError(getErrorMessage(err, 'Create failed'))
     } finally {
       setSubmitting(false)
     }
@@ -110,8 +113,7 @@ export default function Users() {
       setEditUser(null)
       fetchUsers(pagination.page)
     } catch (err) {
-      const msg = err.body?.message || err.body?.error || err.message || 'Update failed'
-      setFormError(typeof msg === 'string' ? msg : 'Request failed')
+      setFormError(getErrorMessage(err, 'Update failed'))
     } finally {
       setSubmitting(false)
     }
@@ -125,91 +127,59 @@ export default function Users() {
       setDeleteUser(null)
       fetchUsers(pagination.page)
     } catch (err) {
-      const msg = err.body?.message || err.body?.error || err.message || 'Delete failed'
-      setError(typeof msg === 'string' ? msg : 'Request failed')
+      setError(getErrorMessage(err, 'Delete failed'))
     } finally {
       setSubmitting(false)
     }
   }
 
-  const roleOptions = roles.map((r) => ({ value: r.name, label: r.name }))
+  const roleOptions = [{ value: '', label: 'All Roles' }, ...roles.map((r) => ({ value: r.name, label: r.name }))]
   const total = pagination.total ?? users.length
   const totalActive = users.filter((u) => u.isActive && !u.isBlocked).length
   const totalSuspended = users.filter((u) => u.isBlocked).length
 
   return (
-    <div className="users-page">
-      <div className="users-header">
-        <div>
-          <h1 className="users-title">User Management</h1>
-          <p className="users-subtitle">Manage and monitor platform users</p>
-        </div>
-        <div className="users-actions">
-          <button type="button" className="users-btn secondary" disabled>
-            Export
-          </button>
-          <button type="button" className="users-btn primary" onClick={() => setCreateOpen(true)}>
-            Add User
-          </button>
-        </div>
+    <div className="mgmt-page">
+      <PageHeader
+        title="User Management"
+        subtitle="Manage and monitor platform users"
+        primaryAction={<Button variant="primary" onClick={() => setCreateOpen(true)}>Add User</Button>}
+        secondaryAction={<Button disabled>Export</Button>}
+      />
+
+      <div className="mgmt-cards">
+        <SummaryCard value={total} label="Total Users" meta="+12.5% this month" metaVariant="positive" />
+        <SummaryCard
+          value={totalActive}
+          label="Active Users"
+          meta={total ? `${Math.round((totalActive / total) * 100)}% of total` : undefined}
+          metaVariant="positive"
+        />
+        <SummaryCard value="-" label="Pending Approval" meta="Requires review" metaVariant="warning" />
+        <SummaryCard
+          value={totalSuspended}
+          label="Suspended"
+          meta={total ? `${((totalSuspended / total) * 100).toFixed(1)}% of total` : undefined}
+          metaVariant="negative"
+        />
       </div>
 
-      <div className="users-cards">
-        <div className="users-card">
-          <span className="users-card-value">{total}</span>
-          <span className="users-card-label">Total Users</span>
-          <span className="users-card-meta positive">+12.5% this month</span>
-        </div>
-        <div className="users-card">
-          <span className="users-card-value">{totalActive}</span>
-          <span className="users-card-label">Active Users</span>
-          <span className="users-card-meta positive">{total ? Math.round((totalActive / total) * 100) : 0}% of total</span>
-        </div>
-        <div className="users-card">
-          <span className="users-card-value">—</span>
-          <span className="users-card-label">Pending Approval</span>
-          <span className="users-card-meta warning">Requires review</span>
-        </div>
-        <div className="users-card">
-          <span className="users-card-value">{totalSuspended}</span>
-          <span className="users-card-label">Suspended</span>
-          <span className="users-card-meta negative">{total ? ((totalSuspended / total) * 100).toFixed(1) : 0}% of total</span>
-        </div>
-      </div>
+      <SearchToolbar
+        searchValue={search}
+        onSearchChange={setSearch}
+        onSearchSubmit={handleSearchSubmit}
+        searchPlaceholder="Search by name, email, or ID..."
+        filterOptions={roleOptions}
+        filterValue={roleFilter}
+        onFilterChange={(v) => { setRoleFilter(v); setPagination((p) => ({ ...p, page: 1 })); }}
+        extraButton={<Button onClick={() => fetchUsers(1)}>More Filters</Button>}
+      />
 
-      <div className="users-toolbar">
-        <form className="users-search-form" onSubmit={handleSearchSubmit}>
-          <svg className="users-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input
-            type="search"
-            placeholder="Search by name, email, or ID..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="users-search-input"
-          />
-        </form>
-        <select
-          value={roleFilter}
-          onChange={(e) => { setRoleFilter(e.target.value); setPagination((p) => ({ ...p, page: 1 })); }}
-          className="users-select"
-        >
-          <option value="">All Roles</option>
-          {roleOptions.map(({ value, label }) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
-        <button type="button" className="users-btn secondary" onClick={() => fetchUsers(1)}>
-          More Filters
-        </button>
-      </div>
+      {error && <Alert>{error}</Alert>}
 
-      {error && <div className="users-error" role="alert">{error}</div>}
-
-      <div className="users-table-wrap">
-        {loading ? (
-          <div className="users-loading">Loading users…</div>
-        ) : (
-          <table className="users-table">
+      <DataTable loading={loading} loadingMessage="Loading users…" emptyColSpan={6}>
+        {!loading && (
+          <table className="mgmt-table">
             <thead>
               <tr>
                 <th><input type="checkbox" aria-label="Select all" /></th>
@@ -222,32 +192,29 @@ export default function Users() {
             </thead>
             <tbody>
               {users.length === 0 ? (
-                <tr><td colSpan={6} className="users-empty">No users found</td></tr>
+                <TableEmptyRow colSpan={6} message="No users found" />
               ) : (
                 users.map((user) => {
                   const status = getStatus(user)
-                  const name = user.email || user.phone || user._id
                   return (
                     <tr key={user._id}>
-                      <td><input type="checkbox" aria-label={`Select ${name}`} /></td>
+                      <td><input type="checkbox" aria-label={`Select ${user.email || user.phone}`} /></td>
                       <td>
-                        <div className="users-cell-user">
-                          <span className="users-avatar">{initials(user.email || user.phone)}</span>
-                          <div>
-                            <span className="users-name">{user.email || user.phone || '—'}</span>
-                            <span className="users-email">{user.email ? user.phone || '—' : user.phone || '—'}</span>
-                          </div>
-                        </div>
+                        <UserCell
+                          primary={user.email || user.phone || '-'}
+                          secondary={user.email ? user.phone || '-' : user.phone || '-'}
+                          nameOrEmail={user.email || user.phone}
+                        />
                       </td>
                       <td>{getRoleName(user)}</td>
-                      <td><span className={`users-badge ${status.className}`}>{status.label}</span></td>
-                      <td>{user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</td>
+                      <td><span className={`mgmt-badge mgmt-status-${status.statusKey}`}>{status.label}</span></td>
+                      <td>{user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}</td>
                       <td>
-                        <div className="users-actions-cell">
-                          <button type="button" className="users-action-btn" onClick={() => setViewUser(user)} title="View">View</button>
-                          <button type="button" className="users-action-btn" onClick={() => setEditUser(user)} title="Edit">Edit</button>
-                          <button type="button" className="users-action-btn danger" onClick={() => setDeleteUser(user)} title="Delete">Delete</button>
-                        </div>
+                        <TableActionButtons
+                          onView={() => setViewUser(user)}
+                          onEdit={() => setEditUser(user)}
+                          onDelete={() => setDeleteUser(user)}
+                        />
                       </td>
                     </tr>
                   )
@@ -256,36 +223,20 @@ export default function Users() {
             </tbody>
           </table>
         )}
-      </div>
+      </DataTable>
 
-      {!loading && pagination.pages > 1 && (
-        <div className="users-pagination">
-          <button
-            type="button"
-            className="users-btn secondary"
-            disabled={pagination.page <= 1}
-            onClick={() => setPagination((p) => ({ ...p, page: p.page - 1 }))}
-          >
-            Previous
-          </button>
-          <span className="users-pagination-info">
-            Page {pagination.page} of {pagination.pages} ({pagination.total} total)
-          </span>
-          <button
-            type="button"
-            className="users-btn secondary"
-            disabled={pagination.page >= pagination.pages}
-            onClick={() => setPagination((p) => ({ ...p, page: p.page + 1 }))}
-          >
-            Next
-          </button>
-        </div>
-      )}
+      <Pagination
+        page={pagination.page}
+        pages={pagination.pages}
+        total={pagination.total}
+        onPrevious={() => setPagination((p) => ({ ...p, page: p.page - 1 }))}
+        onNext={() => setPagination((p) => ({ ...p, page: p.page + 1 }))}
+      />
 
       {createOpen && (
         <UserForm
           title="Add User"
-          roles={roleOptions}
+          roles={roleOptions.filter((o) => o.value !== '')}
           onSubmit={handleCreate}
           onClose={() => { setCreateOpen(false); setFormError(''); }}
           error={formError}
@@ -297,7 +248,7 @@ export default function Users() {
         <UserForm
           title="Edit User"
           user={editUser}
-          roles={roleOptions}
+          roles={roleOptions.filter((o) => o.value !== '')}
           onSubmit={(values) => handleUpdate(editUser._id, values)}
           onClose={() => { setEditUser(null); setFormError(''); }}
           error={formError}
@@ -305,9 +256,7 @@ export default function Users() {
           mode="edit"
         />
       )}
-      {viewUser && (
-        <UserView user={viewUser} onClose={() => setViewUser(null)} />
-      )}
+      {viewUser && <UserView user={viewUser} onClose={() => setViewUser(null)} />}
       {deleteUser && (
         <ConfirmModal
           title="Delete User"

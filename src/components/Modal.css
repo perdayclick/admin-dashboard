@@ -184,6 +184,19 @@
   color: #111;
 }
 
+.view-kyc-verified {
+  color: #059669;
+  font-weight: 600;
+}
+
+.view-kyc-pending {
+  color: #d97706;
+}
+
+.view-kyc-rejected {
+  color: #dc2626;
+}
+
 /* ----- Responsive ----- */
 @media (max-width: 639px) {
   .modal-backdrop {

@@ -98,6 +98,12 @@
   margin-left: auto;
   opacity: 0.8;
 }
+.sidebar-arrow.active {
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  opacity: 0.8;
+}
 
 .sidebar-footer {
   padding: 1rem 1.25rem;
