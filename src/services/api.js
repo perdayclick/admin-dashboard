@@ -1,4 +1,7 @@
-const API_BASE = import.meta.env.VITE_API_URL || ''
+// Use .env VITE_API_URL; fallback for dev so API calls hit backend (e.g. http://localhost:5000)
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV ? 'http://localhost:5000' : '')
 
 function getAuthToken() {
   return localStorage.getItem('admin_access_token')

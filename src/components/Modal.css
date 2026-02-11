@@ -68,6 +68,13 @@
   margin-bottom: 1rem;
 }
 
+.modal-hint {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #6b7280;
+  margin-left: 0.25rem;
+}
+
 .modal-label {
   display: flex;
   flex-direction: column;
@@ -195,6 +202,42 @@
 
 .view-kyc-rejected {
   color: #dc2626;
+}
+
+.modal-section {
+  margin-bottom: 1.5rem;
+}
+
+.modal-section-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.modal-form-scroll .modal-form {
+  overflow-y: auto;
+  max-height: calc(90vh - 140px);
+}
+
+.view-section {
+  margin-bottom: 1.25rem;
+}
+
+.view-section-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.modal-view-scroll .modal-body {
+  overflow-y: auto;
+  max-height: calc(90vh - 80px);
 }
 
 /* ----- Responsive ----- */

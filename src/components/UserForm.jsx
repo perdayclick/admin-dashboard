@@ -22,12 +22,18 @@ export default function UserForm({ title, user, roles, onSubmit, onClose, error,
     }
   }, [user, roles])
 
+  const handlePhoneChange = (e) => {
+    const v = e.target.value.replace(/\D/g, '').slice(0, 10)
+    setPhone(v)
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
     if (mode === 'create') {
       onSubmit({ phone: phone.trim(), email: email.trim() || undefined, roleName: roleName.trim(), password: password || undefined })
     } else {
-      onSubmit({ phone: phone.trim(), email: email.trim() || undefined, roleName: roleName.trim(), isActive, isBlocked })
+      // Phone is view-only on edit; do not send
+      onSubmit({ email: email.trim() || undefined, roleName: roleName.trim(), isActive, isBlocked })
     }
   }
 
@@ -41,14 +47,21 @@ export default function UserForm({ title, user, roles, onSubmit, onClose, error,
         <form onSubmit={handleSubmit} className="modal-form">
           {error && <div className="modal-error" role="alert">{error}</div>}
           <label className="modal-label">
-            Phone
+            Phone {mode === 'edit' && <span className="modal-hint">(view only)</span>}
             <input
-              type="text"
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]{10}"
+              maxLength={10}
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="10–15 digits"
+              onChange={handlePhoneChange}
+              placeholder="10 digits"
               required
+              readOnly={mode === 'edit'}
+              disabled={mode === 'edit'}
               className="modal-input"
+              aria-readonly={mode === 'edit'}
+              title="Exactly 10 digits"
             />
           </label>
           <label className="modal-label">
