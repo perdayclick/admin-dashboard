@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { workersApi } from '../services/api'
 import { KYC_FILTER_OPTIONS } from '../constants/kyc'
 import { kycLabel, getKycBadgeClass, getErrorMessage } from '../utils/format'
@@ -32,6 +33,7 @@ export default function Workers() {
   const [deleteWorker, setDeleteWorker] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
+  const navigate = useNavigate()
 
   const fetchWorkers = useCallback(async (page = 1) => {
     setLoading(true)
@@ -168,14 +170,19 @@ export default function Workers() {
                     <tr key={w._id}>
                       <td><input type="checkbox" aria-label={`Select ${w.fullName || w.phone}`} /></td>
                       <td>
-                        <UserCell primary={w.fullName || '-'} secondary={w.phone || w.email || '-'} nameOrEmail={w.fullName || w.phone} />
+                        <UserCell
+                          primary={w.fullName || '-'}
+                          secondary={w.phone || w.email || '-'}
+                          nameOrEmail={w.fullName || w.phone}
+                          onClick={() => navigate(`/workers/${w._id}`)}
+                        />
                       </td>
                       <td>{loc}</td>
                       <td><span className={getKycBadgeClass(w.kyc?.status)}>{kycLabel(w.kyc?.status)}</span></td>
                       <td><span className="mgmt-badge mgmt-status-availability">{w.availabilityStatus || '-'}</span></td>
                       <td>
                         <TableActionButtons
-                          onView={() => setViewWorker(w)}
+                          onView={() => navigate(`/workers/${w._id}`)}
                           onEdit={() => setEditWorker(w)}
                           onDelete={() => setDeleteWorker(w)}
                         />
@@ -218,7 +225,7 @@ export default function Workers() {
           mode="edit"
         />
       )}
-      {viewWorker && <WorkerView worker={viewWorker} onClose={() => setViewWorker(null)} />}
+      {/* Detail view moved to standalone /workers/:workerId page */}
       {deleteWorker && (
         <ConfirmModal
           title="Delete Worker"

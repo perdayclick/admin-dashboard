@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { authApi } from '../services/api'
@@ -14,8 +14,13 @@ export default function Login() {
   const location = useLocation()
   const from = location.state?.from?.pathname || '/dashboard'
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(from, { replace: true })
+    }
+  }, [isAuthenticated, from, navigate])
+
   if (isAuthenticated) {
-    navigate(from, { replace: true })
     return null
   }
 

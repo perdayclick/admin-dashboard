@@ -60,6 +60,17 @@
   border-color: #5b21b6;
 }
 
+.mgmt-btn-danger {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.mgmt-btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
 .mgmt-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -255,13 +266,29 @@
   color: #6b7280;
 }
 
-.mgmt-badge {
+.mgmt-cell-user-clickable {
+  cursor: pointer;
+}
+
+.mgmt-cell-user-clickable .mgmt-name {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.mgmt-badge,
+.badge {
   display: inline-block;
   padding: 0.25rem 0.625rem;
   border-radius: 9999px;
   font-size: 0.8125rem;
   font-weight: 500;
 }
+
+.badge-success { background: #d1fae5; color: #059669; }
+.badge-info { background: #dbeafe; color: #2563eb; }
+.badge-warning { background: #fef3c7; color: #d97706; }
+.badge-danger { background: #fee2e2; color: #dc2626; }
+.badge-secondary { background: #f3f4f6; color: #6b7280; }
 
 .mgmt-kyc-verified {
   background: #d1fae5;
@@ -296,6 +323,99 @@
 .mgmt-status-availability {
   background: #e0e7ff;
   color: #4338ca;
+}
+
+.mgmt-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: #6d28d9;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.mgmt-link:hover {
+  color: #5b21b6;
+}
+
+.mgmt-table-meta {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin-top: 0.125rem;
+}
+
+/* Job view / detail page */
+.job-view-hero {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+}
+.job-view-hero-main {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.job-view-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111;
+}
+.job-view-posted {
+  margin: 0.5rem 0 0;
+  font-size: 0.9375rem;
+  color: #6b7280;
+}
+.job-view-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.job-view-stat {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1rem;
+  text-align: center;
+}
+.job-view-stat-value {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111;
+}
+.job-view-stat-label {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+.job-view-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+.job-view-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+.job-view-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+.job-view-card .view-section-title {
+  margin-top: 0;
+}
+.job-view-desc {
+  max-height: 8em;
+  overflow-y: auto;
 }
 
 .mgmt-actions-cell {
