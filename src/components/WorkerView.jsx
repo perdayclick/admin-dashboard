@@ -20,7 +20,7 @@ function formatAddress(addr) {
   return parts.length ? parts.join(', ') : '—'
 }
 
-export default function WorkerView({ worker, onClose }) {
+export default function WorkerView({ worker, onClose, onApproveKyc }) {
   const u = worker?.userId || worker?.user
   const phone = u?.phone ?? worker?.phone ?? '—'
   const email = u?.email ?? worker?.email ?? '—'
@@ -125,6 +125,19 @@ export default function WorkerView({ worker, onClose }) {
                 <span className="view-value">{kyc.aadhaarReference}</span>
               </div>
             )}
+            {(kyc?.aadhaarFrontImage || kyc?.aadhaarBackImage) && (
+              <div className="view-row">
+                <span className="view-label">Aadhaar images</span>
+                <span className="view-value">
+                  {kyc.aadhaarFrontImage && (
+                    <img src={kyc.aadhaarFrontImage} alt="Aadhaar front" style={{ maxWidth: '100%', maxHeight: '160px', display: 'block', marginBottom: '0.5rem', borderRadius: '4px' }} />
+                  )}
+                  {kyc.aadhaarBackImage && (
+                    <img src={kyc.aadhaarBackImage} alt="Aadhaar back" style={{ maxWidth: '100%', maxHeight: '160px', display: 'block', borderRadius: '4px' }} />
+                  )}
+                </span>
+              </div>
+            )}
             {kyc?.bankAccountNumber && (
               <div className="view-row">
                 <span className="view-label">Bank account</span>
@@ -173,8 +186,13 @@ export default function WorkerView({ worker, onClose }) {
               </div>
             </section>
           )}
-          <div className="modal-actions" style={{ borderTop: 'none', paddingTop: 0 }}>
+          <div className="modal-actions" style={{ borderTop: 'none', paddingTop: 0, display: 'flex', justifyContent: 'space-between' }}>
             <button type="button" className="modal-btn secondary" onClick={onClose}>Close</button>
+            {onApproveKyc && kyc?.status !== 'APPROVED' && (
+              <button type="button" className="modal-btn primary" onClick={onApproveKyc}>
+                Approve KYC
+              </button>
+            )}
           </div>
         </div>
       </div>

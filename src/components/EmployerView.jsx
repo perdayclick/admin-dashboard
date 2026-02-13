@@ -20,7 +20,7 @@ function formatAddress(addr) {
   return parts.length ? parts.join(', ') : '—'
 }
 
-export default function EmployerView({ employer, onClose }) {
+export default function EmployerView({ employer, onClose, onApproveKyc }) {
   const u = employer?.userId || employer?.user
   const phone = u?.phone ?? employer?.phone ?? '—'
   const email = u?.email ?? employer?.email ?? '—'
@@ -38,6 +38,14 @@ export default function EmployerView({ employer, onClose }) {
         <div className="modal-body">
           <section className="view-section">
             <h3 className="view-section-title">User &amp; business</h3>
+            <div className="view-row">
+              <span className="view-label">Full name</span>
+              <span className="view-value">{employer?.fullName || '—'}</span>
+            </div>
+            <div className="view-row">
+              <span className="view-label">Gender</span>
+              <span className="view-value">{employer?.gender || '—'}</span>
+            </div>
             <div className="view-row">
               <span className="view-label">Business name</span>
               <span className="view-value">{employer?.businessName || '—'}</span>
@@ -127,6 +135,19 @@ export default function EmployerView({ employer, onClose }) {
                 <span className="view-value">{kyc.companyPan}</span>
               </div>
             )}
+            {(kyc?.aadhaarFrontImage || kyc?.aadhaarBackImage) && (
+              <div className="view-row">
+                <span className="view-label">Aadhaar images</span>
+                <span className="view-value">
+                  {kyc.aadhaarFrontImage && (
+                    <img src={kyc.aadhaarFrontImage} alt="Aadhaar front" style={{ maxWidth: '100%', maxHeight: '160px', display: 'block', marginBottom: '0.5rem', borderRadius: '4px' }} />
+                  )}
+                  {kyc.aadhaarBackImage && (
+                    <img src={kyc.aadhaarBackImage} alt="Aadhaar back" style={{ maxWidth: '100%', maxHeight: '160px', display: 'block', borderRadius: '4px' }} />
+                  )}
+                </span>
+              </div>
+            )}
             {kyc?.verifiedAt && (
               <div className="view-row">
                 <span className="view-label">Verified at</span>
@@ -163,8 +184,13 @@ export default function EmployerView({ employer, onClose }) {
               )}
             </section>
           )}
-          <div className="modal-actions" style={{ borderTop: 'none', paddingTop: 0 }}>
+          <div className="modal-actions" style={{ borderTop: 'none', paddingTop: 0, display: 'flex', justifyContent: 'space-between' }}>
             <button type="button" className="modal-btn secondary" onClick={onClose}>Close</button>
+            {onApproveKyc && kyc?.status !== 'APPROVED' && (
+              <button type="button" className="modal-btn primary" onClick={onApproveKyc}>
+                Approve KYC
+              </button>
+            )}
           </div>
         </div>
       </div>

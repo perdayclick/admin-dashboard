@@ -146,7 +146,12 @@ export default function WorkerForm({ title, worker, onSubmit, onClose, error, su
             </label>
             <label className="modal-label">
               Gender
-              <input type="text" value={gender} onChange={(e) => setGender(e.target.value)} placeholder="e.g. Male" className="modal-input" />
+              <select value={gender} onChange={(e) => setGender(e.target.value)} className="modal-input">
+                <option value="">Select gender</option>
+                <option value="MALE">Male</option>
+                <option value="FEMALE">Female</option>
+                <option value="OTHER">Other</option>
+              </select>
             </label>
             <label className="modal-label">
               Age

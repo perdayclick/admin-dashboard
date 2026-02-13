@@ -124,3 +124,46 @@ export const employersApi = {
   delete: (employerId) =>
     apiRequest(`/api/employer/employers/${employerId}`, { method: 'DELETE' }),
 }
+
+// Jobs (admin uses /api/job with admin token)
+export const jobsApi = {
+  list: (params = {}) => {
+    const sp = new URLSearchParams()
+    if (params.page) sp.set('page', params.page)
+    if (params.limit) sp.set('limit', params.limit)
+    if (params.status) sp.set('status', params.status)
+    if (params.workType) sp.set('workType', params.workType)
+    if (params.employerId) sp.set('employerId', params.employerId)
+    if (params.search) sp.set('search', params.search)
+    const q = sp.toString()
+    return apiRequest(`/api/job${q ? `?${q}` : ''}`)
+  },
+  get: (jobId) => apiRequest(`/api/job/${jobId}`),
+  create: (body) =>
+    apiRequest('/api/job', { method: 'POST', body: JSON.stringify(body) }),
+  update: (jobId, body) =>
+    apiRequest(`/api/job/${jobId}`, { method: 'PUT', body: JSON.stringify(body) }),
+  delete: (jobId) =>
+    apiRequest(`/api/job/${jobId}`, { method: 'DELETE' }),
+  setStatus: (jobId, status) =>
+    apiRequest(`/api/job/${jobId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  getAudit: (jobId, params = {}) => {
+    const sp = new URLSearchParams()
+    if (params.page) sp.set('page', params.page)
+    if (params.limit) sp.set('limit', params.limit)
+    const q = sp.toString()
+    return apiRequest(`/api/job/${jobId}/audit${q ? `?${q}` : ''}`)
+  },
+}
+
+// Skills (for job form dropdown)
+export const skillsApi = {
+  list: (params = {}) => {
+    const sp = new URLSearchParams()
+    if (params.page) sp.set('page', params.page)
+    if (params.limit) sp.set('limit', params.limit)
+    if (params.search) sp.set('search', params.search)
+    const q = sp.toString()
+    return apiRequest(`/api/skills${q ? `?${q}` : ''}`)
+  },
+}

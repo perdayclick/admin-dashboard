@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { employersApi } from '../services/api'
 import { KYC_FILTER_OPTIONS } from '../constants/kyc'
 import { kycLabel, getKycBadgeClass, getErrorMessage } from '../utils/format'
@@ -32,6 +33,7 @@ export default function Employers() {
   const [deleteEmployer, setDeleteEmployer] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
+  const navigate = useNavigate()
 
   const fetchEmployers = useCallback(async (page = 1) => {
     setLoading(true)
@@ -172,6 +174,7 @@ export default function Employers() {
                           primary={e.businessName || e.companyName || '-'}
                           secondary={e.phone || e.email || '-'}
                           nameOrEmail={e.businessName || e.contactPersonName}
+                          onClick={() => navigate(`/employers/${e._id}`)}
                         />
                       </td>
                       <td>{loc}</td>
@@ -179,7 +182,7 @@ export default function Employers() {
                       <td><span className="mgmt-badge mgmt-status-availability">{e.availabilityStatus || '-'}</span></td>
                       <td>
                         <TableActionButtons
-                          onView={() => setViewEmployer(e)}
+                          onView={() => navigate(`/employers/${e._id}`)}
                           onEdit={() => setEditEmployer(e)}
                           onDelete={() => setDeleteEmployer(e)}
                         />
@@ -222,7 +225,7 @@ export default function Employers() {
           mode="edit"
         />
       )}
-      {viewEmployer && <EmployerView employer={viewEmployer} onClose={() => setViewEmployer(null)} />}
+      {/* Detail view moved to standalone /employers/:employerId page */}
       {deleteEmployer && (
         <ConfirmModal
           title="Delete Employer"

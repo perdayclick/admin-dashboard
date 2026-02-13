@@ -9,6 +9,8 @@ export default function EmployerForm({ title, employer, onSubmit, onClose, error
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [gender, setGender] = useState('')
   const [businessName, setBusinessName] = useState('')
   const [companyName, setCompanyName] = useState('')
   const [gstNumber, setGstNumber] = useState('')
@@ -27,6 +29,8 @@ export default function EmployerForm({ title, employer, onSubmit, onClose, error
       const u = employer.userId || employer.user
       setPhone(u?.phone ?? employer.phone ?? '')
       setEmail(u?.email ?? employer.email ?? '')
+      setFullName(employer.fullName || '')
+      setGender(employer.gender || '')
       setBusinessName(employer.businessName || '')
       setCompanyName(employer.companyName || '')
       setGstNumber(employer.gstNumber || '')
@@ -50,6 +54,8 @@ export default function EmployerForm({ title, employer, onSubmit, onClose, error
       setAddress(emptyAddress)
       setKycStatus('')
       setRemarks('')
+      setFullName('')
+      setGender('')
     }
   }, [employer])
 
@@ -68,6 +74,8 @@ export default function EmployerForm({ title, employer, onSubmit, onClose, error
       phone: phone.trim(),
       email: email.trim() || undefined,
       password: password || undefined,
+      fullName: fullName.trim() || undefined,
+      gender: gender || undefined,
       businessName: businessName.trim() || undefined,
       companyName: companyName.trim() || undefined,
       gstNumber: gstNumber.trim() || undefined,
@@ -82,6 +90,8 @@ export default function EmployerForm({ title, employer, onSubmit, onClose, error
     if (mode === 'edit') {
       const updatePayload = {
         user: { email: (payload.email && payload.email.trim()) || undefined },
+        fullName: payload.fullName,
+        gender: payload.gender,
         businessName: payload.businessName,
         companyName: payload.companyName,
         gstNumber: payload.gstNumber,
@@ -129,6 +139,19 @@ export default function EmployerForm({ title, employer, onSubmit, onClose, error
           </section>
           <section className="modal-section">
             <h3 className="modal-section-title">Business</h3>
+            <label className="modal-label">
+              Full name
+              <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Owner full name" className="modal-input" />
+            </label>
+            <label className="modal-label">
+              Gender
+              <select value={gender} onChange={(e) => setGender(e.target.value)} className="modal-input">
+                <option value="">Select gender</option>
+                <option value="MALE">Male</option>
+                <option value="FEMALE">Female</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </label>
             <label className="modal-label">
               Business name
               <input type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Business name" className="modal-input" />

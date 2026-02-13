@@ -3,7 +3,7 @@
  */
 export default function Button({ children, variant = 'secondary', onClick, disabled, type = 'button', className = '' }) {
   const base = 'mgmt-btn'
-  const variantClass = variant === 'primary' ? 'mgmt-btn-primary' : 'mgmt-btn-secondary'
+  const variantClass = variant === 'primary' ? 'mgmt-btn-primary' : variant === 'danger' ? 'mgmt-btn-danger' : 'mgmt-btn-secondary'
   return (
     <button
       type={type}
