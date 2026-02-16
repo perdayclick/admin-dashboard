@@ -1,8 +1,9 @@
 /* Shared management page layout (Users, Workers, Employers) - BEM-like mgmt- prefix */
 
 .mgmt-page {
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
+  padding: 0 1rem 2rem;
 }
 
 .mgmt-header {
@@ -399,19 +400,145 @@
   gap: 0.5rem;
   margin-bottom: 1.5rem;
 }
+/* Detail view: KYC first (full width), then 2-col grid for Profile, Skills, Address, Wallet */
 .job-view-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1rem;
 }
+.job-view-grid.detail-view {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+.job-view-grid.detail-view .detail-view-kyc-first {
+  grid-column: 1 / -1;
+}
+
 .job-view-card {
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
-  padding: 1.25rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.job-view-card.kyc-card-first {
+  border-left: 4px solid #6d28d9;
+  padding-left: 1.25rem;
+  background: linear-gradient(to right, rgba(109, 40, 217, 0.03) 0%, transparent 120px);
 }
 .job-view-card .view-section-title {
+  margin: 0 0 1rem;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: #111;
+  letter-spacing: -0.01em;
+}
+.job-view-card .view-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 1rem;
+  align-items: baseline;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f3f4f6;
+  min-height: 2.25rem;
+}
+.job-view-card .view-row:last-child {
+  border-bottom: none;
+}
+@media (max-width: 480px) {
+  .job-view-card .view-row {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+}
+.job-view-card .view-label {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+.job-view-card .view-value {
+  font-size: 0.9375rem;
+  color: #111;
+  word-break: break-word;
+}
+.job-view-card .view-value-full {
+  width: 100%;
+  min-width: 0;
+  grid-column: 1 / -1;
+}
+.job-view-card .view-row.view-row-full {
+  grid-template-columns: 1fr;
+}
+.job-view-card .view-row.view-row-full .view-value {
+  margin-top: 0.25rem;
+}
+
+/* View detail KYC section – user friendly */
+.view-detail-kyc-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.view-kyc-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.view-kyc-status-badge.verified { background: #d1fae5; color: #059669; }
+.view-kyc-status-badge.pending { background: #fef3c7; color: #d97706; }
+.view-kyc-status-badge.rejected { background: #fee2e2; color: #dc2626; }
+.view-kyc-images-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+.job-view-card .view-row .view-kyc-images-grid {
   margin-top: 0;
+}
+.view-kyc-image-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f9fafb;
+}
+.view-kyc-image-item img {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  display: block;
+}
+.view-kyc-image-caption {
+  padding: 0.5rem 0.6rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+.view-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.view-badge-success { background: #d1fae5; color: #059669; }
+.view-badge-warning { background: #fef3c7; color: #d97706; }
+.view-badge-danger { background: #fee2e2; color: #dc2626; }
+.view-badge-muted { background: #f3f4f6; color: #6b7280; }
+.view-detail-empty-kyc {
+  color: #6b7280;
+  font-size: 0.9375rem;
+  padding: 1rem 0;
+}
+.view-detail-section-subtitle {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  margin: 0.5rem 0 0.75rem;
 }
 .job-view-desc {
   max-height: 8em;
