@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { employersApi } from '../services/api'
-import { kycLabel, getErrorMessage } from '../utils/format'
+import { kycLabel, kycImageVerificationLabel, getKycImageVerificationBadgeClass, getErrorMessage } from '../utils/format'
 import { PageHeader, Alert, Button } from '../components/ui'
+import KycImageVerificationModal from '../components/KycImageVerificationModal'
 import '../styles/ManagementPage.css'
 
 function formatDate(v) {
@@ -25,6 +26,8 @@ export default function EmployerDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [kycImageModalOpen, setKycImageModalOpen] = useState(false)
+  const [kycImageSubmitting, setKycImageSubmitting] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -51,6 +54,34 @@ export default function EmployerDetail() {
       setError(getErrorMessage(err, 'Failed to approve KYC'))
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleKycImageApprove = async () => {
+    if (!employer) return
+    setKycImageSubmitting(true)
+    try {
+      const res = await employersApi.update(employer._id, { kycImageVerification: 'VERIFIED' })
+      setEmployer(res.data || res)
+      setKycImageModalOpen(false)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to update image verification'))
+    } finally {
+      setKycImageSubmitting(false)
+    }
+  }
+
+  const handleKycImageReject = async () => {
+    if (!employer) return
+    setKycImageSubmitting(true)
+    try {
+      const res = await employersApi.update(employer._id, { kycImageVerification: 'FAILED' })
+      setEmployer(res.data || res)
+      setKycImageModalOpen(false)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to update image verification'))
+    } finally {
+      setKycImageSubmitting(false)
     }
   }
 
@@ -86,7 +117,105 @@ export default function EmployerDetail() {
 
       {error && employer && <Alert variant="error" className="mgmt-alert">{error}</Alert>}
 
-      <div className="job-view-grid">
+      <div className="job-view-grid detail-view">
+        {/* KYC first – full width */}
+        <section className="job-view-card kyc-card-first detail-view-kyc-first">
+          <h3 className="view-section-title">KYC</h3>
+          {!kyc ? (
+            <p className="view-detail-empty-kyc">No KYC submitted yet.</p>
+          ) : (
+            <>
+              <div className="view-detail-kyc-header">
+                <span className={`view-kyc-status-badge ${kyc?.status === 'APPROVED' ? 'verified' : kyc?.status === 'REJECTED' ? 'rejected' : 'pending'}`}>
+                  {kycLabel(kyc?.status)}
+                </span>
+                {kyc?.kycImageVerification ? (
+                  <span className={getKycImageVerificationBadgeClass(kyc.kycImageVerification)}>
+                    Image verification: {kycImageVerificationLabel(kyc.kycImageVerification)}
+                  </span>
+                ) : null}
+              </div>
+              {(kyc?.aadhaarFrontImage || kyc?.aadhaarBackImage || kyc?.selfieImage) && (
+                <div className="view-row view-row-full" style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: '1rem', marginBottom: '0.5rem' }}>
+                  <span className="view-label">Verify images</span>
+                  <span className="view-value">
+                    <Button variant="secondary" onClick={() => setKycImageModalOpen(true)}>
+                      Verify KYC images
+                    </Button>
+                  </span>
+                </div>
+              )}
+              <div className="view-row">
+                <span className="view-label">Status</span>
+                <span className="view-value">{kycLabel(kyc?.status)}</span>
+              </div>
+              <div className="view-row">
+                <span className="view-label">Image verification</span>
+                <span className="view-value">
+                  {kyc?.kycImageVerification ? (
+                    <span className={getKycImageVerificationBadgeClass(kyc.kycImageVerification)}>
+                      {kycImageVerificationLabel(kyc.kycImageVerification)}
+                    </span>
+                  ) : (
+                    '—'
+                  )}
+                </span>
+              </div>
+              {kyc?.gstCertificate && (
+                <div className="view-row">
+                  <span className="view-label">GST certificate</span>
+                  <span className="view-value">{kyc.gstCertificate}</span>
+                </div>
+              )}
+              {kyc?.companyPan && (
+                <div className="view-row">
+                  <span className="view-label">Company PAN</span>
+                  <span className="view-value">{kyc.companyPan}</span>
+                </div>
+              )}
+              {(kyc?.aadhaarFrontImage || kyc?.aadhaarBackImage || kyc?.selfieImage) && (
+                <div className="view-row view-row-full">
+                  <span className="view-label">Documents &amp; photos</span>
+                  <span className="view-value view-value-full">
+                    <div className="view-kyc-images-grid">
+                      {kyc.aadhaarFrontImage && (
+                        <div className="view-kyc-image-item">
+                          <img src={kyc.aadhaarFrontImage} alt="Aadhaar front" />
+                          <div className="view-kyc-image-caption">Aadhaar front</div>
+                        </div>
+                      )}
+                      {kyc.aadhaarBackImage && (
+                        <div className="view-kyc-image-item">
+                          <img src={kyc.aadhaarBackImage} alt="Aadhaar back" />
+                          <div className="view-kyc-image-caption">Aadhaar back</div>
+                        </div>
+                      )}
+                      {kyc.selfieImage && (
+                        <div className="view-kyc-image-item">
+                          <img src={kyc.selfieImage} alt="Selfie" />
+                          <div className="view-kyc-image-caption">Selfie</div>
+                        </div>
+                      )}
+                    </div>
+                  </span>
+                </div>
+              )}
+              {kyc?.verifiedAt && (
+                <div className="view-row">
+                  <span className="view-label">Verified at</span>
+                  <span className="view-value">{formatDate(kyc.verifiedAt)}</span>
+                </div>
+              )}
+              {kyc?.remarks && (
+                <div className="view-row">
+                  <span className="view-label">Remarks</span>
+                  <span className="view-value">{kyc.remarks}</span>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+
         <section className="job-view-card">
           <h3 className="view-section-title">User &amp; business</h3>
           <div className="view-row"><span className="view-label">Full name</span><span className="view-value">{employer?.fullName || '—'}</span></div>
@@ -127,59 +256,6 @@ export default function EmployerDetail() {
           </div>
         </section>
 
-        <section className="job-view-card">
-          <h3 className="view-section-title">KYC</h3>
-          <div className="view-row">
-            <span className="view-label">Status</span>
-            <span className="view-value">{kycLabel(kyc?.status)}</span>
-          </div>
-          {kyc?.gstCertificate && (
-            <div className="view-row">
-              <span className="view-label">GST certificate</span>
-              <span className="view-value">{kyc.gstCertificate}</span>
-            </div>
-          )}
-          {kyc?.companyPan && (
-            <div className="view-row">
-              <span className="view-label">Company PAN</span>
-              <span className="view-value">{kyc.companyPan}</span>
-            </div>
-          )}
-          {(kyc?.aadhaarFrontImage || kyc?.aadhaarBackImage) && (
-            <div className="view-row">
-              <span className="view-label">Aadhaar images</span>
-              <span className="view-value">
-                {kyc.aadhaarFrontImage && (
-                  <img
-                    src={kyc.aadhaarFrontImage}
-                    alt="Aadhaar front"
-                    style={{ maxWidth: '100%', maxHeight: '160px', display: 'block', marginBottom: '0.5rem', borderRadius: '4px' }}
-                  />
-                )}
-                {kyc.aadhaarBackImage && (
-                  <img
-                    src={kyc.aadhaarBackImage}
-                    alt="Aadhaar back"
-                    style={{ maxWidth: '100%', maxHeight: '160px', display: 'block', borderRadius: '4px' }}
-                  />
-                )}
-              </span>
-            </div>
-          )}
-          {kyc?.verifiedAt && (
-            <div className="view-row">
-              <span className="view-label">Verified at</span>
-              <span className="view-value">{formatDate(kyc.verifiedAt)}</span>
-            </div>
-          )}
-          {kyc?.remarks && (
-            <div className="view-row">
-              <span className="view-label">Remarks</span>
-              <span className="view-value">{kyc.remarks}</span>
-            </div>
-          )}
-        </section>
-
         {wallet && (wallet.balance != null || wallet.amountCredit != null || wallet.amountDebit != null) && (
           <section className="job-view-card">
             <h3 className="view-section-title">Wallet</h3>
@@ -198,7 +274,17 @@ export default function EmployerDetail() {
           </section>
         )}
       </div>
+
+      <KycImageVerificationModal
+        open={kycImageModalOpen}
+        onClose={() => setKycImageModalOpen(false)}
+        aadhaarFrontImage={kyc?.aadhaarFrontImage}
+        aadhaarBackImage={kyc?.aadhaarBackImage}
+        selfieImage={kyc?.selfieImage}
+        onApprove={handleKycImageApprove}
+        onReject={handleKycImageReject}
+        loading={kycImageSubmitting}
+      />
     </div>
   )
 }
-

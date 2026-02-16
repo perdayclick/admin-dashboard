@@ -37,6 +37,32 @@ export function getKycBadgeClass(status, baseClass = 'mgmt-badge') {
 }
 
 /**
+ * Human-readable KYC image verification label (e.g. VERIFIED -> "Verified").
+ * @param {string} [value]
+ * @param {string} [fallback='—']
+ * @returns {string}
+ */
+export function kycImageVerificationLabel(value, fallback = '—') {
+  if (!value || typeof value !== 'string') return fallback
+  const v = value.trim().toUpperCase()
+  const map = { VERIFIED: 'Verified', PENDING: 'Pending', FAILED: 'Failed', APPROVED: 'Verified', REJECTED: 'Failed' }
+  return map[v] ?? value
+}
+
+/**
+ * CSS class for KYC image verification badge.
+ * @param {string} [value]
+ * @returns {string}
+ */
+export function getKycImageVerificationBadgeClass(value) {
+  if (!value) return 'view-badge view-badge-muted'
+  const v = String(value).trim().toUpperCase()
+  if (v === 'VERIFIED' || v === 'APPROVED') return 'view-badge view-badge-success'
+  if (v === 'FAILED' || v === 'REJECTED') return 'view-badge view-badge-danger'
+  return 'view-badge view-badge-warning'
+}
+
+/**
  * Parse API error for display message.
  * @param {Error} err
  * @param {string} [defaultMsg='Request failed']

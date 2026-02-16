@@ -1,4 +1,4 @@
-import { kycLabel as formatKycLabel } from '../utils/format'
+import { kycLabel as formatKycLabel, kycImageVerificationLabel, getKycImageVerificationBadgeClass } from '../utils/format'
 import './Modal.css'
 
 function kycClass(s) {
@@ -119,9 +119,33 @@ export default function EmployerView({ employer, onClose, onApproveKyc }) {
           </section>
           <section className="view-section">
             <h3 className="view-section-title">KYC</h3>
+            {kyc && (
+              <div className="view-detail-kyc-header" style={{ marginBottom: '0.75rem' }}>
+                <span className={`view-kyc-status-badge ${kyc?.status === 'APPROVED' ? 'verified' : kyc?.status === 'REJECTED' ? 'rejected' : 'pending'}`}>
+                  {formatKycLabel(kyc?.status)}
+                </span>
+                {kyc?.kycImageVerification ? (
+                  <span className={getKycImageVerificationBadgeClass(kyc.kycImageVerification)}>
+                    {kycImageVerificationLabel(kyc.kycImageVerification)}
+                  </span>
+                ) : null}
+              </div>
+            )}
             <div className="view-row">
               <span className="view-label">Status</span>
               <span className={`view-value ${kycClass(kyc?.status)}`}>{formatKycLabel(kyc?.status)}</span>
+            </div>
+            <div className="view-row">
+              <span className="view-label">Image verification</span>
+              <span className="view-value">
+                {kyc?.kycImageVerification ? (
+                  <span className={getKycImageVerificationBadgeClass(kyc.kycImageVerification)}>
+                    {kycImageVerificationLabel(kyc.kycImageVerification)}
+                  </span>
+                ) : (
+                  '—'
+                )}
+              </span>
             </div>
             {kyc?.gstCertificate && (
               <div className="view-row">
@@ -135,16 +159,30 @@ export default function EmployerView({ employer, onClose, onApproveKyc }) {
                 <span className="view-value">{kyc.companyPan}</span>
               </div>
             )}
-            {(kyc?.aadhaarFrontImage || kyc?.aadhaarBackImage) && (
+            {(kyc?.aadhaarFrontImage || kyc?.aadhaarBackImage || kyc?.selfieImage) && (
               <div className="view-row">
-                <span className="view-label">Aadhaar images</span>
+                <span className="view-label">Documents &amp; photos</span>
                 <span className="view-value">
-                  {kyc.aadhaarFrontImage && (
-                    <img src={kyc.aadhaarFrontImage} alt="Aadhaar front" style={{ maxWidth: '100%', maxHeight: '160px', display: 'block', marginBottom: '0.5rem', borderRadius: '4px' }} />
-                  )}
-                  {kyc.aadhaarBackImage && (
-                    <img src={kyc.aadhaarBackImage} alt="Aadhaar back" style={{ maxWidth: '100%', maxHeight: '160px', display: 'block', borderRadius: '4px' }} />
-                  )}
+                  <div className="view-kyc-images-grid">
+                    {kyc.aadhaarFrontImage && (
+                      <div className="view-kyc-image-item">
+                        <img src={kyc.aadhaarFrontImage} alt="Aadhaar front" />
+                        <div className="view-kyc-image-caption">Aadhaar front</div>
+                      </div>
+                    )}
+                    {kyc.aadhaarBackImage && (
+                      <div className="view-kyc-image-item">
+                        <img src={kyc.aadhaarBackImage} alt="Aadhaar back" />
+                        <div className="view-kyc-image-caption">Aadhaar back</div>
+                      </div>
+                    )}
+                    {kyc.selfieImage && (
+                      <div className="view-kyc-image-item">
+                        <img src={kyc.selfieImage} alt="Selfie" />
+                        <div className="view-kyc-image-caption">Selfie</div>
+                      </div>
+                    )}
+                  </div>
                 </span>
               </div>
             )}
