@@ -1,4 +1,5 @@
 import { kycLabel as formatKycLabel, kycImageVerificationLabel, getKycImageVerificationBadgeClass } from '../utils/format'
+import { hasAnyKycImages, getAllKycImageItems } from '../utils/kycImages'
 import './Modal.css'
 
 function kycClass(s) {
@@ -155,29 +156,17 @@ export default function EmployerView({ employer, onClose, onApproveKyc }) {
                 <span className="view-value">{kyc.companyPan}</span>
               </div>
             )}
-            {(kyc?.aadhaarFrontImage || kyc?.aadhaarBackImage || kyc?.selfieImage) && (
+            {hasAnyKycImages(kyc) && (
               <div className="view-row">
                 <span className="view-label">Documents &amp; photos</span>
                 <span className="view-value">
                   <div className="view-kyc-images-grid">
-                    {kyc.aadhaarFrontImage && (
-                      <div className="view-kyc-image-item">
-                        <img src={kyc.aadhaarFrontImage} alt="Aadhaar front" />
-                        <div className="view-kyc-image-caption">Aadhaar front</div>
+                    {getAllKycImageItems(kyc).map((item, index) => (
+                      <div key={`${item.imageUrl}-${index}`} className="view-kyc-image-item">
+                        <img src={item.imageUrl} alt={item.label} />
+                        <div className="view-kyc-image-caption">{item.label}</div>
                       </div>
-                    )}
-                    {kyc.aadhaarBackImage && (
-                      <div className="view-kyc-image-item">
-                        <img src={kyc.aadhaarBackImage} alt="Aadhaar back" />
-                        <div className="view-kyc-image-caption">Aadhaar back</div>
-                      </div>
-                    )}
-                    {kyc.selfieImage && (
-                      <div className="view-kyc-image-item">
-                        <img src={kyc.selfieImage} alt="Selfie" />
-                        <div className="view-kyc-image-caption">Selfie</div>
-                      </div>
-                    )}
+                    ))}
                   </div>
                 </span>
               </div>
@@ -193,6 +182,31 @@ export default function EmployerView({ employer, onClose, onApproveKyc }) {
                 <span className="view-label">Remarks</span>
                 <span className="view-value">{kyc.remarks}</span>
               </div>
+            )}
+            {kyc?.status === 'REJECTED' && (kyc?.rejectedImages?.length > 0 || kyc?.rejectedImageType || kyc?.kycRejectedReason) && (
+              <>
+                {(kyc.rejectedImages?.length > 0 || kyc.rejectedImageType) && (
+                  <div className="view-row">
+                    <span className="view-label">Rejected image(s)</span>
+                    <span className="view-value">
+                      {kyc.rejectedImages?.length > 0
+                        ? kyc.rejectedImages.map((e, i) => (
+                            <span key={i}>
+                              {e.imageType === 'FRONT' ? 'Aadhaar front' : e.imageType === 'BACK' ? 'Aadhaar back' : 'Selfie'}
+                              {kyc.rejectedImages.length > 1 && i < kyc.rejectedImages.length - 1 ? ', ' : ''}
+                            </span>
+                          ))
+                        : kyc.rejectedImageType === 'FRONT' ? 'Aadhaar front' : kyc.rejectedImageType === 'BACK' ? 'Aadhaar back' : kyc.rejectedImageType === 'SELFIE' ? 'Selfie' : kyc.rejectedImageType}
+                    </span>
+                  </div>
+                )}
+                {kyc.kycRejectedReason && (
+                  <div className="view-row">
+                    <span className="view-label">KYC rejected reason</span>
+                    <span className="view-value">{kyc.kycRejectedReason}</span>
+                  </div>
+                )}
+              </>
             )}
           </section>
           {wallet && (wallet.balance != null || wallet.amountCredit != null || wallet.amountDebit != null) && (

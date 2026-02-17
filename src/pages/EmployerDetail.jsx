@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { employersApi } from '../services/api'
 import { kycLabel, kycImageVerificationLabel, getKycImageVerificationBadgeClass, getErrorMessage } from '../utils/format'
+import { getLatestKycImage, hasAnyKycImages, getAllKycImageItems } from '../utils/kycImages'
 import { PageHeader, Alert, Button } from '../components/ui'
 import KycImageVerificationModal from '../components/KycImageVerificationModal'
 import '../styles/ManagementPage.css'
@@ -71,15 +72,20 @@ export default function EmployerDetail() {
     }
   }
 
-  const handleKycImageReject = async () => {
+  const handleKycImageReject = async (rejectedImages, kycRejectedReason) => {
     if (!employer) return
     setKycImageSubmitting(true)
     try {
-      const res = await employersApi.update(employer._id, { kycImageVerification: 'FAILED' })
+      const res = await employersApi.update(employer._id, {
+        kycStatus: 'REJECTED',
+        kycImageVerification: 'FAILED',
+        rejectedImages: Array.isArray(rejectedImages) ? rejectedImages : [],
+        kycRejectedReason: (kycRejectedReason || '').trim(),
+      })
       setEmployer(res.data || res)
       setKycImageModalOpen(false)
     } catch (err) {
-      setError(getErrorMessage(err, 'Failed to update image verification'))
+      setError(getErrorMessage(err, 'Failed to reject KYC'))
     } finally {
       setKycImageSubmitting(false)
     }
@@ -135,7 +141,7 @@ export default function EmployerDetail() {
                   </span>
                 ) : null}
               </div>
-              {(kyc?.aadhaarFrontImage || kyc?.aadhaarBackImage || kyc?.selfieImage) && (
+              {hasAnyKycImages(kyc) && (
                 <div className="view-row view-row-full" style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: '1rem', marginBottom: '0.5rem' }}>
                   <span className="view-label">Verify images</span>
                   <span className="view-value">
@@ -173,29 +179,17 @@ export default function EmployerDetail() {
                   <span className="view-value">{kyc.companyPan}</span>
                 </div>
               )}
-              {(kyc?.aadhaarFrontImage || kyc?.aadhaarBackImage || kyc?.selfieImage) && (
+              {hasAnyKycImages(kyc) && (
                 <div className="view-row view-row-full">
                   <span className="view-label">Documents &amp; photos</span>
                   <span className="view-value view-value-full">
                     <div className="view-kyc-images-grid">
-                      {kyc.aadhaarFrontImage && (
-                        <div className="view-kyc-image-item">
-                          <img src={kyc.aadhaarFrontImage} alt="Aadhaar front" />
-                          <div className="view-kyc-image-caption">Aadhaar front</div>
+                      {getAllKycImageItems(kyc).map((item, index) => (
+                        <div key={`${item.imageUrl}-${index}`} className="view-kyc-image-item">
+                          <img src={item.imageUrl} alt={item.label} />
+                          <div className="view-kyc-image-caption">{item.label}</div>
                         </div>
-                      )}
-                      {kyc.aadhaarBackImage && (
-                        <div className="view-kyc-image-item">
-                          <img src={kyc.aadhaarBackImage} alt="Aadhaar back" />
-                          <div className="view-kyc-image-caption">Aadhaar back</div>
-                        </div>
-                      )}
-                      {kyc.selfieImage && (
-                        <div className="view-kyc-image-item">
-                          <img src={kyc.selfieImage} alt="Selfie" />
-                          <div className="view-kyc-image-caption">Selfie</div>
-                        </div>
-                      )}
+                      ))}
                     </div>
                   </span>
                 </div>
@@ -211,6 +205,31 @@ export default function EmployerDetail() {
                   <span className="view-label">Remarks</span>
                   <span className="view-value">{kyc.remarks}</span>
                 </div>
+              )}
+              {kyc?.status === 'REJECTED' && (kyc?.rejectedImages?.length > 0 || kyc?.rejectedImageType || kyc?.kycRejectedReason) && (
+                <>
+                  {(kyc.rejectedImages?.length > 0 || kyc.rejectedImageType) && (
+                    <div className="view-row">
+                      <span className="view-label">Rejected image(s)</span>
+                      <span className="view-value">
+                        {kyc.rejectedImages?.length > 0
+                          ? kyc.rejectedImages.map((e, i) => (
+                              <span key={i}>
+                                {e.imageType === 'FRONT' ? 'Aadhaar front' : e.imageType === 'BACK' ? 'Aadhaar back' : 'Selfie'}
+                                {kyc.rejectedImages.length > 1 && i < kyc.rejectedImages.length - 1 ? ', ' : ''}
+                              </span>
+                            ))
+                          : kyc.rejectedImageType === 'FRONT' ? 'Aadhaar front' : kyc.rejectedImageType === 'BACK' ? 'Aadhaar back' : kyc.rejectedImageType === 'SELFIE' ? 'Selfie' : kyc.rejectedImageType}
+                      </span>
+                    </div>
+                  )}
+                  {kyc.kycRejectedReason && (
+                    <div className="view-row">
+                      <span className="view-label">KYC rejected reason</span>
+                      <span className="view-value">{kyc.kycRejectedReason}</span>
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}
@@ -277,9 +296,7 @@ export default function EmployerDetail() {
       <KycImageVerificationModal
         open={kycImageModalOpen}
         onClose={() => setKycImageModalOpen(false)}
-        aadhaarFrontImage={kyc?.aadhaarFrontImage}
-        aadhaarBackImage={kyc?.aadhaarBackImage}
-        selfieImage={kyc?.selfieImage}
+        allImageItems={getAllKycImageItems(kyc)}
         onApprove={handleKycImageApprove}
         onReject={handleKycImageReject}
         loading={kycImageSubmitting}
