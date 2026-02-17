@@ -13,7 +13,6 @@ export default function WorkerForm({ title, worker, onSubmit, onClose, error, su
   const [gender, setGender] = useState('')
   const [age, setAge] = useState('')
   const [dob, setDob] = useState('')
-  const [phoneNumber, setPhoneNumber] = useState('')
   const [whatsappNumber, setWhatsappNumber] = useState('')
   const [skills, setSkills] = useState('')
   const [experienceLevel, setExperienceLevel] = useState('')
@@ -33,7 +32,6 @@ export default function WorkerForm({ title, worker, onSubmit, onClose, error, su
       setGender(worker.gender || '')
       setAge(worker.age ?? '')
       setDob(worker.dob ? (typeof worker.dob === 'string' ? worker.dob.slice(0, 10) : worker.dob.toISOString?.().slice(0, 10)) : '')
-      setPhoneNumber(worker.phoneNumber || '')
       setWhatsappNumber(worker.whatsappNumber || '')
       setSkills(Array.isArray(worker.skills) ? worker.skills.join(', ') : '')
       setExperienceLevel(worker.experienceLevel || '')
@@ -60,9 +58,6 @@ export default function WorkerForm({ title, worker, onSubmit, onClose, error, su
   const handlePhoneChange = (e) => {
     setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))
   }
-  const handlePhoneNumberChange = (e) => {
-    setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))
-  }
   const handleWhatsAppChange = (e) => {
     setWhatsappNumber(e.target.value.replace(/\D/g, '').slice(0, 10))
   }
@@ -79,7 +74,6 @@ export default function WorkerForm({ title, worker, onSubmit, onClose, error, su
       gender: gender.trim() || undefined,
       age: age === '' ? undefined : Number(age),
       dob: dob ? dob : undefined,
-      phoneNumber: phoneNumber.trim() || undefined,
       whatsappNumber: whatsappNumber.trim() || undefined,
       skills: skills.trim() ? skills.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
       experienceLevel: experienceLevel.trim() || undefined,
@@ -95,7 +89,6 @@ export default function WorkerForm({ title, worker, onSubmit, onClose, error, su
         gender: payload.gender || undefined,
         age: payload.age,
         dob: payload.dob,
-        phoneNumber: payload.phoneNumber || undefined,
         whatsappNumber: payload.whatsappNumber || undefined,
         skills: payload.skills,
         experienceLevel: payload.experienceLevel || undefined,
@@ -160,10 +153,6 @@ export default function WorkerForm({ title, worker, onSubmit, onClose, error, su
             <label className="modal-label">
               Date of birth
               <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className="modal-input" />
-            </label>
-            <label className="modal-label">
-              Phone number (worker)
-              <input type="tel" inputMode="numeric" maxLength={10} value={phoneNumber} onChange={handlePhoneNumberChange} placeholder="10 digits" className="modal-input" />
             </label>
             <label className="modal-label">
               WhatsApp

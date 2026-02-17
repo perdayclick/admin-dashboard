@@ -16,7 +16,6 @@ export default function EmployerForm({ title, employer, onSubmit, onClose, error
   const [gstNumber, setGstNumber] = useState('')
   const [dob, setDob] = useState('')
   const [contactPersonName, setContactPersonName] = useState('')
-  const [contactPersonPhone, setContactPersonPhone] = useState('')
   const [jobCategories, setJobCategories] = useState('')
   const [availabilityStatus, setAvailabilityStatus] = useState('')
   const [verificationType, setVerificationType] = useState('')
@@ -36,7 +35,6 @@ export default function EmployerForm({ title, employer, onSubmit, onClose, error
       setGstNumber(employer.gstNumber || '')
       setDob(employer.dob ? (typeof employer.dob === 'string' ? employer.dob.slice(0, 10) : employer.dob.toISOString?.().slice(0, 10)) : '')
       setContactPersonName(employer.contactPersonName || '')
-      setContactPersonPhone(employer.contactPersonPhone || '')
       setJobCategories(Array.isArray(employer.jobCategories) ? employer.jobCategories.join(', ') : '')
       setAvailabilityStatus(employer.availabilityStatus || '')
       setVerificationType(employer.verificationType || '')
@@ -62,9 +60,6 @@ export default function EmployerForm({ title, employer, onSubmit, onClose, error
   const handlePhoneChange = (e) => {
     setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))
   }
-  const handleContactPhoneChange = (e) => {
-    setContactPersonPhone(e.target.value.replace(/\D/g, '').slice(0, 10))
-  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -81,7 +76,6 @@ export default function EmployerForm({ title, employer, onSubmit, onClose, error
       gstNumber: gstNumber.trim() || undefined,
       dob: dob || undefined,
       contactPersonName: contactPersonName.trim() || undefined,
-      contactPersonPhone: contactPersonPhone.trim() || undefined,
       jobCategories: jobCategories.trim() ? jobCategories.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
       availabilityStatus: availabilityStatus || undefined,
       verificationType: verificationType || undefined,
@@ -97,7 +91,6 @@ export default function EmployerForm({ title, employer, onSubmit, onClose, error
         gstNumber: payload.gstNumber,
         dob: payload.dob,
         contactPersonName: payload.contactPersonName,
-        contactPersonPhone: payload.contactPersonPhone,
         jobCategories: payload.jobCategories,
         availabilityStatus: payload.availabilityStatus,
         verificationType: payload.verificationType,
@@ -171,10 +164,6 @@ export default function EmployerForm({ title, employer, onSubmit, onClose, error
             <label className="modal-label">
               Contact person
               <input type="text" value={contactPersonName} onChange={(e) => setContactPersonName(e.target.value)} placeholder="Contact person name" className="modal-input" />
-            </label>
-            <label className="modal-label">
-              Contact phone
-              <input type="tel" inputMode="numeric" maxLength={10} value={contactPersonPhone} onChange={handleContactPhoneChange} placeholder="10 digits" className="modal-input" />
             </label>
             <label className="modal-label">
               Job categories (comma-separated)
