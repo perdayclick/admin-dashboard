@@ -134,6 +134,11 @@ export default function Users() {
   }
 
   const roleOptions = [{ value: '', label: 'All Roles' }, ...roles.map((r) => ({ value: r.name, label: r.name }))]
+  // For admin user creation: hide Worker and Employer (they are created via Workers/Employers flows only)
+  const ROLES_EXCLUDED_FROM_CREATE = ['WORKER', 'EMPLOYER']
+  const createRoleOptions = roleOptions.filter(
+    (o) => o.value !== '' && !ROLES_EXCLUDED_FROM_CREATE.includes((o.value || '').toUpperCase())
+  )
   const total = pagination.total ?? users.length
   const totalActive = users.filter((u) => u.isActive && !u.isBlocked).length
   const totalSuspended = users.filter((u) => u.isBlocked).length
@@ -236,7 +241,7 @@ export default function Users() {
       {createOpen && (
         <UserForm
           title="Add User"
-          roles={roleOptions.filter((o) => o.value !== '')}
+          roles={createRoleOptions}
           onSubmit={handleCreate}
           onClose={() => { setCreateOpen(false); setFormError(''); }}
           error={formError}

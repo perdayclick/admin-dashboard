@@ -226,7 +226,6 @@ export default function EmployerDetail() {
           <div className="view-row"><span className="view-label">Phone</span><span className="view-value">{phone}</span></div>
           <div className="view-row"><span className="view-label">Email</span><span className="view-value">{email}</span></div>
           <div className="view-row"><span className="view-label">Contact person</span><span className="view-value">{employer?.contactPersonName || '—'}</span></div>
-          <div className="view-row"><span className="view-label">Contact phone</span><span className="view-value">{employer?.contactPersonPhone || '—'}</span></div>
           <div className="view-row"><span className="view-label">Date of birth</span><span className="view-value">{formatDate(employer?.dob)}</span></div>
           <div className="view-row"><span className="view-label">Verification type</span><span className="view-value">{employer?.verificationType || '—'}</span></div>
           <div className="view-row"><span className="view-label">Availability</span><span className="view-value">{employer?.availabilityStatus || '—'}</span></div>

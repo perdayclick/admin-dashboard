@@ -47,10 +47,6 @@ export default function WorkerView({ worker, onClose, onApproveKyc }) {
               <span className="view-value">{phone}</span>
             </div>
             <div className="view-row">
-              <span className="view-label">Phone number (worker)</span>
-              <span className="view-value">{worker?.phoneNumber || '—'}</span>
-            </div>
-            <div className="view-row">
               <span className="view-label">WhatsApp</span>
               <span className="view-value">{worker?.whatsappNumber || '—'}</span>
             </div>

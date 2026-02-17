@@ -71,10 +71,6 @@ export default function EmployerView({ employer, onClose, onApproveKyc }) {
               <span className="view-value">{employer?.contactPersonName || '—'}</span>
             </div>
             <div className="view-row">
-              <span className="view-label">Contact phone</span>
-              <span className="view-value">{employer?.contactPersonPhone || '—'}</span>
-            </div>
-            <div className="view-row">
               <span className="view-label">Date of birth</span>
               <span className="view-value">{formatDate(employer?.dob)}</span>
             </div>
