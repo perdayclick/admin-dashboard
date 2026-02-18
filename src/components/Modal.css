@@ -190,6 +190,74 @@
   padding-bottom: 0;
 }
 
+/* Structured view sections (same as KYC): card + grid rows */
+.modal-view .view-section {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.modal-view .view-section .view-section-title {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+.modal-view .view-section .view-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f3f4f6;
+  min-height: 2rem;
+  margin-bottom: 0;
+}
+.modal-view .view-section .view-row:last-child {
+  border-bottom: none;
+}
+.modal-view .view-section .view-label {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  font-weight: 500;
+  min-width: 0;
+}
+.modal-view .view-section .view-value {
+  font-size: 0.9375rem;
+  color: #111;
+  word-break: break-word;
+}
+.modal-view .view-section .view-row.view-row-full {
+  grid-template-columns: 1fr;
+}
+.modal-view .view-section .view-row.view-row-full .view-label {
+  margin-bottom: 0.25rem;
+}
+.modal-view .view-section.view-section-kyc {
+  border-left: 4px solid #6d28d9;
+  background: linear-gradient(to right, rgba(109, 40, 217, 0.03) 0%, transparent 100px);
+}
+.modal-view .view-section .view-detail-section-subtitle {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f3f4f6;
+}
+.modal-view .view-section .view-detail-section-subtitle:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+@media (max-width: 400px) {
+  .modal-view .view-section .view-row {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+}
+
 .view-row {
   display: flex;
   flex-wrap: wrap;
@@ -251,6 +319,32 @@
   color: #6b7280;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+}
+
+.view-detail-section-subtitle {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin: 0.75rem 0 0.25rem;
+  font-weight: 600;
+}
+.view-detail-section-subtitle:first-of-type {
+  margin-top: 0;
+}
+
+.view-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+.view-tag {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  background: #f3f4f6;
+  color: #374151;
 }
 
 /* KYC view (detail modal) */

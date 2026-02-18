@@ -15,12 +15,6 @@ function formatDate(v) {
   return '—'
 }
 
-function formatAddress(addr) {
-  if (!addr || typeof addr !== 'object') return '—'
-  const parts = [addr.addressText, addr.city, addr.state, addr.pincode, addr.country].filter(Boolean)
-  return parts.length ? parts.join(', ') : '—'
-}
-
 export default function EmployerView({ employer, onClose, onApproveKyc }) {
   const u = employer?.userId || employer?.user
   const phone = u?.phone ?? employer?.phone ?? '—'
@@ -39,25 +33,10 @@ export default function EmployerView({ employer, onClose, onApproveKyc }) {
         <div className="modal-body">
           <section className="view-section">
             <h3 className="view-section-title">User &amp; business</h3>
+            <p className="view-detail-section-subtitle">Contact</p>
             <div className="view-row">
               <span className="view-label">Full name</span>
               <span className="view-value">{employer?.fullName || '—'}</span>
-            </div>
-            <div className="view-row">
-              <span className="view-label">Gender</span>
-              <span className="view-value">{employer?.gender || '—'}</span>
-            </div>
-            <div className="view-row">
-              <span className="view-label">Business name</span>
-              <span className="view-value">{employer?.businessName || '—'}</span>
-            </div>
-            <div className="view-row">
-              <span className="view-label">Company name</span>
-              <span className="view-value">{employer?.companyName || '—'}</span>
-            </div>
-            <div className="view-row">
-              <span className="view-label">GST number</span>
-              <span className="view-value">{employer?.gstNumber || '—'}</span>
             </div>
             <div className="view-row">
               <span className="view-label">Phone</span>
@@ -72,8 +51,25 @@ export default function EmployerView({ employer, onClose, onApproveKyc }) {
               <span className="view-value">{employer?.contactPersonName || '—'}</span>
             </div>
             <div className="view-row">
+              <span className="view-label">Gender</span>
+              <span className="view-value">{employer?.gender || '—'}</span>
+            </div>
+            <div className="view-row">
               <span className="view-label">Date of birth</span>
               <span className="view-value">{formatDate(employer?.dob)}</span>
+            </div>
+            <p className="view-detail-section-subtitle">Business</p>
+            <div className="view-row">
+              <span className="view-label">Business name</span>
+              <span className="view-value">{employer?.businessName || '—'}</span>
+            </div>
+            <div className="view-row">
+              <span className="view-label">Company name</span>
+              <span className="view-value">{employer?.companyName || '—'}</span>
+            </div>
+            <div className="view-row">
+              <span className="view-label">GST number</span>
+              <span className="view-value">{employer?.gstNumber || '—'}</span>
             </div>
             <div className="view-row">
               <span className="view-label">Verification type</span>
@@ -102,19 +98,56 @@ export default function EmployerView({ employer, onClose, onApproveKyc }) {
           </section>
           <section className="view-section">
             <h3 className="view-section-title">Job categories</h3>
-            <div className="view-row">
+            <div className="view-row view-row-full">
               <span className="view-label">Categories</span>
-              <span className="view-value">{Array.isArray(employer?.jobCategories) && employer.jobCategories.length ? employer.jobCategories.join(', ') : '—'}</span>
+              <span className="view-value">
+                {Array.isArray(employer?.jobCategories) && employer.jobCategories.length > 0 ? (
+                  <div className="view-tags">
+                    {employer.jobCategories.map((cat, i) => (
+                      <span key={i} className="view-tag">{cat}</span>
+                    ))}
+                  </div>
+                ) : (
+                  '—'
+                )}
+              </span>
             </div>
           </section>
           <section className="view-section">
             <h3 className="view-section-title">Address</h3>
-            <div className="view-row">
-              <span className="view-label">Address</span>
-              <span className="view-value">{formatAddress(addr)}</span>
-            </div>
+            {addr && (addr.addressText || addr.city || addr.state || addr.pincode || addr.country) ? (
+              <>
+                {addr.addressText && (
+                  <div className="view-row">
+                    <span className="view-label">Address line</span>
+                    <span className="view-value">{addr.addressText}</span>
+                  </div>
+                )}
+                <div className="view-row">
+                  <span className="view-label">City</span>
+                  <span className="view-value">{addr.city || '—'}</span>
+                </div>
+                <div className="view-row">
+                  <span className="view-label">State</span>
+                  <span className="view-value">{addr.state || '—'}</span>
+                </div>
+                <div className="view-row">
+                  <span className="view-label">Pincode</span>
+                  <span className="view-value">{addr.pincode || '—'}</span>
+                </div>
+                <div className="view-row">
+                  <span className="view-label">Country</span>
+                  <span className="view-value">{addr.country || '—'}</span>
+                </div>
+              </>
+            ) : (
+              <div className="view-row">
+                <span className="view-label">Address</span>
+                <span className="view-value">—</span>
+              </div>
+            )}
           </section>
-          <section className="view-section">
+          <section className="view-section view-section-kyc">
             <h3 className="view-section-title">KYC</h3>
             {kyc && (
               <div className="view-detail-kyc-header" style={{ marginBottom: '0.75rem' }}>
@@ -192,11 +225,11 @@ export default function EmployerView({ employer, onClose, onApproveKyc }) {
                       {kyc.rejectedImages?.length > 0
                         ? kyc.rejectedImages.map((e, i) => (
                             <span key={i}>
-                              {e.imageType === 'FRONT' ? 'Aadhaar front' : e.imageType === 'BACK' ? 'Aadhaar back' : 'Selfie'}
+                              {e.imageType === 'FRONT' ? 'Aadhaar front' : e.imageType === 'BACK' ? 'Aadhaar back' : 'Profile image'}
                               {kyc.rejectedImages.length > 1 && i < kyc.rejectedImages.length - 1 ? ', ' : ''}
                             </span>
                           ))
-                        : kyc.rejectedImageType === 'FRONT' ? 'Aadhaar front' : kyc.rejectedImageType === 'BACK' ? 'Aadhaar back' : kyc.rejectedImageType === 'SELFIE' ? 'Selfie' : kyc.rejectedImageType}
+                        : kyc.rejectedImageType === 'FRONT' ? 'Aadhaar front' : kyc.rejectedImageType === 'BACK' ? 'Aadhaar back' : kyc.rejectedImageType === 'SELFIE' ? 'Profile image' : kyc.rejectedImageType}
                     </span>
                   </div>
                 )}

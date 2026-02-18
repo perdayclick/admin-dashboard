@@ -136,7 +136,7 @@ export default function Employers() {
         searchValue={search}
         onSearchChange={setSearch}
         onSearchSubmit={handleSearchSubmit}
-        searchPlaceholder="Search by company name, email, or phone..."
+        searchPlaceholder="Search by name, email, or phone..."
         filterOptions={KYC_FILTER_OPTIONS}
         filterValue={kycFilter}
         onFilterChange={setKycFilter}
@@ -151,7 +151,7 @@ export default function Employers() {
             <thead>
               <tr>
                 <th><input type="checkbox" aria-label="Select all" /></th>
-                <th>COMPANY</th>
+                <th>NAME</th>
                 <th>LOCATION</th>
                 <th>VERIFICATION</th>
                 <th>STATUS</th>
@@ -168,12 +168,12 @@ export default function Employers() {
                     : '-'
                   return (
                     <tr key={e._id}>
-                      <td><input type="checkbox" aria-label={`Select ${e.businessName || e.companyName}`} /></td>
+                      <td><input type="checkbox" aria-label={`Select ${e.fullName || e.businessName || e.companyName}`} /></td>
                       <td>
                         <UserCell
-                          primary={e.businessName || e.companyName || '-'}
+                          primary={e.fullName || e.businessName || e.companyName || '-'}
                           secondary={e.phone || e.email || '-'}
-                          nameOrEmail={e.businessName || e.contactPersonName}
+                          nameOrEmail={e.fullName || e.contactPersonName}
                           onClick={() => navigate(`/employers/${e._id}`)}
                         />
                       </td>
@@ -229,7 +229,7 @@ export default function Employers() {
       {deleteEmployer && (
         <ConfirmModal
           title="Delete Employer"
-          message={`Are you sure you want to delete this employer? (${deleteEmployer.businessName || deleteEmployer.companyName || deleteEmployer.phone || deleteEmployer._id})`}
+          message={`Are you sure you want to delete this employer? (${deleteEmployer.fullName || deleteEmployer.businessName || deleteEmployer.companyName || deleteEmployer.phone || deleteEmployer._id})`}
           confirmLabel="Delete"
           onConfirm={handleDeleteConfirm}
           onCancel={() => setDeleteEmployer(null)}

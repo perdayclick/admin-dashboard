@@ -12,7 +12,7 @@ export function getLatestKycImage(field) {
 }
 
 /**
- * Check if KYC has any document/selfie images (supports array or legacy string).
+ * Check if KYC has any document/profile images (supports array or legacy string).
  */
 export function hasAnyKycImages(kyc) {
   if (!kyc) return false;
@@ -26,7 +26,7 @@ export function hasAnyKycImages(kyc) {
 /** Image type enum values for reject flow */
 export const KYC_IMAGE_TYPE = { FRONT: 'FRONT', BACK: 'BACK', SELFIE: 'SELFIE' }
 
-const TYPE_LABELS = { FRONT: 'Aadhaar front', BACK: 'Aadhaar back', SELFIE: 'Selfie' }
+const TYPE_LABELS = { FRONT: 'Aadhaar front', BACK: 'Aadhaar back', SELFIE: 'Profile image' }
 
 /**
  * Normalize a KYC image field to array of { image } (handles array of { image, timestamp } or legacy string).

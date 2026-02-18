@@ -154,6 +154,13 @@ export const jobsApi = {
     const q = sp.toString()
     return apiRequest(`/api/job/${jobId}/audit${q ? `?${q}` : ''}`)
   },
+  assignWorker: (jobId, workerId) =>
+    apiRequest(`/api/job/${jobId}/assign`, {
+      method: 'POST',
+      body: JSON.stringify({ workerId }),
+    }),
+  unassignWorker: (jobId, workerId) =>
+    apiRequest(`/api/job/${jobId}/assign/${workerId}`, { method: 'DELETE' }),
 }
 
 // Skills (for job form dropdown)

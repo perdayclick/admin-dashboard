@@ -14,12 +14,6 @@ function formatDate(v) {
   return '—'
 }
 
-function formatAddress(addr) {
-  if (!addr || typeof addr !== 'object') return '—'
-  const parts = [addr.addressText, addr.city, addr.state, addr.pincode, addr.country].filter(Boolean)
-  return parts.length ? parts.join(', ') : '—'
-}
-
 export default function WorkerDetail() {
   const { workerId } = useParams()
   const navigate = useNavigate()
@@ -227,11 +221,11 @@ export default function WorkerDetail() {
                         {kyc.rejectedImages?.length > 0
                           ? kyc.rejectedImages.map((e, i) => (
                               <span key={i}>
-                                {e.imageType === 'FRONT' ? 'Aadhaar front' : e.imageType === 'BACK' ? 'Aadhaar back' : 'Selfie'}
+                                {e.imageType === 'FRONT' ? 'Aadhaar front' : e.imageType === 'BACK' ? 'Aadhaar back' : 'Profile image'}
                                 {kyc.rejectedImages.length > 1 && i < kyc.rejectedImages.length - 1 ? ', ' : ''}
                               </span>
                             ))
-                          : kyc.rejectedImageType === 'FRONT' ? 'Aadhaar front' : kyc.rejectedImageType === 'BACK' ? 'Aadhaar back' : kyc.rejectedImageType === 'SELFIE' ? 'Selfie' : kyc.rejectedImageType}
+                          : kyc.rejectedImageType === 'FRONT' ? 'Aadhaar front' : kyc.rejectedImageType === 'BACK' ? 'Aadhaar back' : kyc.rejectedImageType === 'SELFIE' ? 'Profile image' : kyc.rejectedImageType}
                       </span>
                     </div>
                   )}
@@ -249,6 +243,7 @@ export default function WorkerDetail() {
 
         <section className="job-view-card">
           <h3 className="view-section-title">User &amp; profile</h3>
+          <p className="view-detail-section-subtitle">Contact</p>
           <div className="view-row"><span className="view-label">Full name</span><span className="view-value">{worker?.fullName || '—'}</span></div>
           <div className="view-row"><span className="view-label">Phone</span><span className="view-value">{phone}</span></div>
           <div className="view-row"><span className="view-label">Phone number (worker)</span><span className="view-value">{worker?.phoneNumber || '—'}</span></div>
@@ -257,6 +252,7 @@ export default function WorkerDetail() {
           <div className="view-row"><span className="view-label">Gender</span><span className="view-value">{worker?.gender || '—'}</span></div>
           <div className="view-row"><span className="view-label">Age</span><span className="view-value">{worker?.age ?? '—'}</span></div>
           <div className="view-row"><span className="view-label">Date of birth</span><span className="view-value">{formatDate(worker?.dob)}</span></div>
+          <p className="view-detail-section-subtitle">Profile</p>
           <div className="view-row"><span className="view-label">Worker level</span><span className="view-value">{worker?.workerLevel || '—'}</span></div>
           <div className="view-row"><span className="view-label">Availability</span><span className="view-value">{worker?.availabilityStatus || '—'}</span></div>
           <div className="view-row"><span className="view-label">Profile score</span><span className="view-value">{worker?.profileScore ?? '—'}</span></div>
@@ -266,10 +262,18 @@ export default function WorkerDetail() {
 
         <section className="job-view-card">
           <h3 className="view-section-title">Skills &amp; work</h3>
-          <div className="view-row">
+          <div className="view-row view-row-full">
             <span className="view-label">Skills</span>
             <span className="view-value">
-              {Array.isArray(worker?.skills) && worker.skills.length ? worker.skills.join(', ') : '—'}
+              {Array.isArray(worker?.skills) && worker.skills.length > 0 ? (
+                <div className="view-tags">
+                  {worker.skills.map((skill, i) => (
+                    <span key={i} className="view-tag">{skill}</span>
+                  ))}
+                </div>
+              ) : (
+                '—'
+              )}
             </span>
           </div>
           <div className="view-row">
@@ -284,10 +288,37 @@ export default function WorkerDetail() {
 
         <section className="job-view-card">
           <h3 className="view-section-title">Address</h3>
-          <div className="view-row">
-            <span className="view-label">Address</span>
-            <span className="view-value">{formatAddress(addr)}</span>
-          </div>
+          {addr && (addr.addressText || addr.city || addr.state || addr.pincode || addr.country) ? (
+            <>
+              {addr.addressText && (
+                <div className="view-row">
+                  <span className="view-label">Address line</span>
+                  <span className="view-value">{addr.addressText}</span>
+                </div>
+              )}
+              <div className="view-row">
+                <span className="view-label">City</span>
+                <span className="view-value">{addr.city || '—'}</span>
+              </div>
+              <div className="view-row">
+                <span className="view-label">State</span>
+                <span className="view-value">{addr.state || '—'}</span>
+              </div>
+              <div className="view-row">
+                <span className="view-label">Pincode</span>
+                <span className="view-value">{addr.pincode || '—'}</span>
+              </div>
+              <div className="view-row">
+                <span className="view-label">Country</span>
+                <span className="view-value">{addr.country || '—'}</span>
+              </div>
+            </>
+          ) : (
+            <div className="view-row">
+              <span className="view-label">Address</span>
+              <span className="view-value">—</span>
+            </div>
+          )}
         </section>
 
         {wallet && (wallet.balance != null || wallet.amountCredit != null || wallet.amountDebit != null) && (

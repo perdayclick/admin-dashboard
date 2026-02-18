@@ -3,7 +3,7 @@ import './Modal.css'
 
 /**
  * Modal for KYC image verification.
- * - View: shows all uploaded images (multiple per type: Aadhaar front 1, 2… back 1… Selfie 1, 2…).
+ * - View: shows all uploaded images (multiple per type: Aadhaar front 1, 2… back 1… Profile image 1, 2…).
  * - Reject: admin selects one or more images (checkboxes) and enters KycRejectedReason, then confirms.
  * allImageItems: array of { imageType, imageUrl, label } from getAllKycImageItems(kyc).
  */

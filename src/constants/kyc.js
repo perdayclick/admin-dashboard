@@ -24,5 +24,5 @@ export const REJECT_KYC_IMAGE = {
 export const REJECT_KYC_IMAGE_OPTIONS = [
   { value: REJECT_KYC_IMAGE.FRONT, label: 'Aadhaar front' },
   { value: REJECT_KYC_IMAGE.BACK, label: 'Aadhaar back' },
-  { value: REJECT_KYC_IMAGE.SELFIE, label: 'Selfie' },
+  { value: REJECT_KYC_IMAGE.SELFIE, label: 'Profile image' },
 ]
