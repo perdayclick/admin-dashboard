@@ -1,6 +1,7 @@
 import './Modal.css'
 
 export default function ConfirmModal({ title, message, confirmLabel, onConfirm, onCancel, loading, variant = 'primary' }) {
+  console.log("heelo")
   return (
     <div className="modal-backdrop" onClick={onCancel}>
       <div className="modal-box modal-confirm" onClick={(e) => e.stopPropagation()}>
