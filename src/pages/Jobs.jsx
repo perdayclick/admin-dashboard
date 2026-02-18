@@ -46,9 +46,11 @@ export default function Jobs() {
         workType: workTypeFilter || undefined,
         search: search.trim() || undefined,
       })
-      const data = res.data || res
-      setJobs(data.jobs || [])
-      setPagination(data.pagination || { page: 1, limit: 10, total: 0, pages: 0 })
+      const payload = res?.data ?? res
+      const jobList = payload?.jobs ?? payload ?? []
+      const pag = payload?.pagination ?? { page: 1, limit: 10, total: 0, pages: 0 }
+      setJobs(Array.isArray(jobList) ? jobList : [])
+      setPagination({ ...pag, page: pag.page ?? 1, limit: pag.limit ?? 10, total: pag.total ?? 0, pages: pag.pages ?? 0 })
     } catch (err) {
       setError(getErrorMessage(err, 'Failed to load jobs'))
       setJobs([])
@@ -244,9 +246,7 @@ export default function Jobs() {
                       <button type="button" className="mgmt-action-btn" onClick={() => navigate(`/jobs/${j._id}`)} title="View details" aria-label="View">
                         <span aria-hidden>👁</span>
                       </button>
-                      {(j.status === JOB_STATUS.PENDING || j.status === JOB_STATUS.REJECTED) && (
-                        <button type="button" className="mgmt-action-btn" onClick={() => setEditJob(j)} title="Edit" aria-label="Edit">✎</button>
-                      )}
+                      <button type="button" className="mgmt-action-btn" onClick={() => setEditJob(j)} title="Edit" aria-label="Edit">✎</button>
                       {isPending && (
                         <>
                           <Button variant="primary" onClick={() => handleSetStatus(j._id, JOB_STATUS.APPROVED)} disabled={loadingThis} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>Approve</Button>

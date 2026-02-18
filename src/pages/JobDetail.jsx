@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { jobsApi, skillsApi } from '../services/api'
+import { jobsApi, skillsApi, workersApi } from '../services/api'
 import { jobStatusLabel, jobStatusBadgeClass, JOB_STATUS } from '../constants/jobEnums'
 import { getErrorMessage } from '../utils/format'
 import { PageHeader, Alert, Button } from '../components/ui'
@@ -41,11 +41,20 @@ export default function JobDetail() {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const [skills, setSkills] = useState([])
+  const [assignOpen, setAssignOpen] = useState(false)
+  const [workers, setWorkers] = useState([])
+  const [workersLoading, setWorkersLoading] = useState(false)
+  const [selectedWorkerId, setSelectedWorkerId] = useState('')
+  const [assigning, setAssigning] = useState(false)
+  const [unassigningId, setUnassigningId] = useState(null)
 
   useEffect(() => {
     let cancelled = false
     jobsApi.get(jobId).then((res) => {
-      if (!cancelled) setJob((res.data || res))
+      if (!cancelled) {
+        const payload = res?.data ?? res
+        setJob(payload)
+      }
     }).catch((err) => {
       if (!cancelled) setError(getErrorMessage(err, 'Failed to load job'))
     }).finally(() => { if (!cancelled) setLoading(false) })
@@ -65,7 +74,7 @@ export default function JobDetail() {
     setSubmitting(true)
     try {
       const res = await jobsApi.update(jobId, values)
-      setJob(res.data || res)
+      setJob(res?.data ?? res)
       setEditOpen(false)
     } catch (err) {
       setFormError(getErrorMessage(err, 'Update failed'))
@@ -90,13 +99,57 @@ export default function JobDetail() {
     setStatusLoading(true)
     try {
       const res = await jobsApi.setStatus(jobId, status)
-      setJob(res.data || res)
+      setJob((res?.data ?? res) || job)
     } catch (err) {
       setError(getErrorMessage(err, 'Status update failed'))
     } finally {
       setStatusLoading(false)
     }
   }
+
+  const loadWorkers = () => {
+    setWorkersLoading(true)
+    workersApi.list({ limit: 200 }).then((res) => {
+      const payload = res?.data ?? res
+      setWorkers(Array.isArray(payload?.workers) ? payload.workers : [])
+    }).catch(() => setWorkers([])).finally(() => setWorkersLoading(false))
+  }
+
+  const handleAssignOpen = () => {
+    setAssignOpen(true)
+    setSelectedWorkerId('')
+    loadWorkers()
+  }
+
+  const handleAssignSubmit = async () => {
+    if (!selectedWorkerId) return
+    setAssigning(true)
+    try {
+      const res = await jobsApi.assignWorker(jobId, selectedWorkerId)
+      setJob((res?.data ?? res) || job)
+      setAssignOpen(false)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Assign failed'))
+    } finally {
+      setAssigning(false)
+    }
+  }
+
+  const handleUnassign = async (workerId) => {
+    setUnassigningId(workerId)
+    try {
+      const res = await jobsApi.unassignWorker(jobId, workerId)
+      setJob((res?.data ?? res) || job)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Unassign failed'))
+    } finally {
+      setUnassigningId(null)
+    }
+  }
+
+  const assignedWorkers = Array.isArray(job?.assignedWorkers) ? job.assignedWorkers : []
+  const assignedIds = assignedWorkers.map((w) => w._id || w)
+  const workersToShow = workers.filter((w) => !assignedIds.includes(w._id))
 
   if (loading) return <div className="mgmt-page"><div className="mgmt-loading">Loading job…</div></div>
   if (error && !job) return <div className="mgmt-page"><Alert variant="error">{error}</Alert><Button onClick={() => navigate('/jobs')}>Back to Jobs</Button></div>
@@ -110,7 +163,7 @@ export default function JobDetail() {
   const canReject = job?.status === JOB_STATUS.PENDING
   const canGoLive = job?.status === JOB_STATUS.APPROVED
   const canClose = job?.status === JOB_STATUS.APPROVED || job?.status === JOB_STATUS.LIVE
-  const canEdit = job?.status === JOB_STATUS.PENDING || job?.status === JOB_STATUS.REJECTED
+  const canEdit = true
 
   const salaryDisplay = job?.perDayPayout != null ? `₹${job.perDayPayout}/day` : job?.salaryOrPayout != null ? `₹${job.salaryOrPayout}` : '—'
 
@@ -195,7 +248,75 @@ export default function JobDetail() {
           <div className="view-row"><span className="view-label">Shift type</span><span className="view-value">{job?.shiftType || '—'}</span></div>
           <div className="view-row"><span className="view-label">Urgent</span><span className="view-value">{job?.isUrgent ? 'Yes' : 'No'}</span></div>
         </section>
+
+        <section className="job-view-card">
+          <h3 className="view-section-title">Assigned workers</h3>
+          <p className="view-row" style={{ marginBottom: '0.5rem' }}>
+            <span className="view-label">Workers who got this job</span>
+            <Button variant="primary" onClick={handleAssignOpen} style={{ marginLeft: '0.5rem' }}>Assign worker</Button>
+          </p>
+          {assignedWorkers.length === 0 ? (
+            <p className="view-value" style={{ color: 'var(--text-muted)' }}>No workers assigned yet.</p>
+          ) : (
+            <ul className="mgmt-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {assignedWorkers.map((w) => {
+                const wid = w._id || w
+                const name = w.fullName || w.phoneNumber || wid
+                return (
+                  <li key={wid} className="view-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                    <button type="button" className="mgmt-link" onClick={() => navigate(`/workers/${wid}`)}>
+                      {name}
+                    </button>
+                    <span className="view-value" style={{ fontSize: '0.875rem' }}>{w.phoneNumber || '—'}</span>
+                    <Button variant="danger" onClick={() => handleUnassign(wid)} disabled={unassigningId === wid}>
+                      {unassigningId === wid ? '…' : 'Unassign'}
+                    </Button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </section>
+
+        {job?.location?.coordinates && (
+          <section className="job-view-card">
+            <h3 className="view-section-title">Location</h3>
+            <div className="view-row"><span className="view-label">Coordinates</span><span className="view-value">[{job.location.coordinates[0]}, {job.location.coordinates[1]}] (lng, lat)</span></div>
+          </section>
+        )}
       </div>
+
+      {assignOpen && (
+        <div className="modal-overlay" role="dialog" aria-modal="true">
+          <div className="modal-content" style={{ maxWidth: 420 }}>
+            <h3 className="view-section-title">Assign worker to this job</h3>
+            {workersLoading ? (
+              <p>Loading workers…</p>
+            ) : (
+              <>
+                <select
+                  value={selectedWorkerId}
+                  onChange={(e) => setSelectedWorkerId(e.target.value)}
+                  className="mgmt-select"
+                  style={{ width: '100%', marginBottom: '0.75rem' }}
+                >
+                  <option value="">Select a worker</option>
+                  {workersToShow.map((w) => (
+                    <option key={w._id} value={w._id}>{w.fullName || w.phoneNumber || w._id}</option>
+                  ))}
+                </select>
+                {workersToShow.length === 0 && <p className="view-value" style={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }}>All listed workers are already assigned or no workers found.</p>}
+              </>
+            )}
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+              <Button variant="secondary" onClick={() => setAssignOpen(false)}>Cancel</Button>
+              <Button variant="primary" onClick={handleAssignSubmit} disabled={!selectedWorkerId || assigning}>
+                {assigning ? 'Assigning…' : 'Assign'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {editOpen && (
         <JobForm
