@@ -11,6 +11,7 @@ import EmployerDetail from '../pages/EmployerDetail'
 import Jobs from '../pages/Jobs'
 import JobDetail from '../pages/JobDetail'
 import Placeholder from '../pages/Placeholder'
+import Categories from '../pages/Categories'
 
 export const router = createBrowserRouter(
   [
@@ -33,6 +34,7 @@ export const router = createBrowserRouter(
         { path: 'workers/:workerId', element: <WorkerDetail /> },
         { path: 'employers', element: <Employers /> },
         { path: 'employers/:employerId', element: <EmployerDetail /> },
+        { path: 'categories', element: <Categories /> },
         { path: 'agents', element: <Placeholder title="Agents" /> },
         { path: 'jobs', element: <Jobs /> },
         { path: 'jobs/:jobId', element: <JobDetail /> },

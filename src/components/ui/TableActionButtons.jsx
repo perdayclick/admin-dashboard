@@ -1,12 +1,17 @@
 /**
- * View / Edit / Delete action buttons for table rows.
+ * View / Edit / Delete / Toggle Active action buttons for table rows.
  */
-export default function TableActionButtons({ onView, onEdit, onDelete }) {
+export default function TableActionButtons({ onView, onEdit, onDelete, onToggleActive, toggleActiveLabel }) {
   return (
     <div className="mgmt-actions-cell">
       {onView && (
         <button type="button" className="mgmt-action-btn" onClick={onView}>
           View
+        </button>
+      )}
+      {onToggleActive && (
+        <button type="button" className="mgmt-action-btn" onClick={onToggleActive}>
+          {toggleActiveLabel ?? 'Toggle'}
         </button>
       )}
       {onEdit && (

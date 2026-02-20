@@ -174,3 +174,25 @@ export const skillsApi = {
     return apiRequest(`/api/skills${q ? `?${q}` : ''}`)
   },
 }
+
+// Categories (all under /api/categories; with admin token list returns all, without token only active)
+export const categoriesApi = {
+  list: (params = {}) => {
+    const sp = new URLSearchParams()
+    if (params.page) sp.set('page', params.page)
+    if (params.limit) sp.set('limit', params.limit)
+    if (params.search) sp.set('search', params.search)
+    if (params.isActive !== undefined && params.isActive !== '') sp.set('isActive', params.isActive)
+    const q = sp.toString()
+    return apiRequest(`/api/categories${q ? `?${q}` : ''}`)
+  },
+  get: (categoryId) => apiRequest(`/api/categories/${categoryId}`),
+  create: (body) =>
+    apiRequest('/api/categories', { method: 'POST', body: JSON.stringify(body) }),
+  update: (categoryId, body) =>
+    apiRequest(`/api/categories/${categoryId}`, { method: 'PUT', body: JSON.stringify(body) }),
+  delete: (categoryId) =>
+    apiRequest(`/api/categories/${categoryId}`, { method: 'DELETE' }),
+  toggleActive: (categoryId) =>
+    apiRequest(`/api/categories/${categoryId}/toggle-active`, { method: 'PATCH' }),
+}
