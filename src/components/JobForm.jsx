@@ -43,7 +43,7 @@ export default function JobForm({ title, job, employers = [], skills = [], onSub
       setPayoutType(job.payoutType || '')
       setDuration(job.duration || '')
       setWorkersRequired(job.workersRequired ?? 1)
-      setSkillsRequired(Array.isArray(job.skillsRequired) ? job.skillsRequired.map((s) => (s._id || s).toString()) : [])
+      setSkillsRequired(Array.isArray(job.skillsRequired) && job.skillsRequired.length ? [job.skillsRequired.map((s) => (s._id || s).toString())[0]] : [])
       setGenderPreference(job.genderPreference || '')
       setMinimumAge(job.minimumAge ?? '')
       setMaximumAge(job.maximumAge ?? '')
@@ -89,12 +89,6 @@ export default function JobForm({ title, job, employers = [], skills = [], onSub
     }
     if (mode === 'create' && employerId) payload.employerId = employerId
     onSubmit(payload)
-  }
-
-  const toggleSkill = (id) => {
-    setSkillsRequired((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
-    )
   }
 
   return (
@@ -171,17 +165,19 @@ export default function JobForm({ title, job, employers = [], skills = [], onSub
           {skills.length > 0 && (
             <section className="modal-section">
               <h3 className="modal-section-title">Skills</h3>
-              <div className="modal-label">
-                <span style={{ marginBottom: '0.5rem', display: 'block' }}>Skills required</span>
-                <div className="modal-checkbox-group">
+              <label className="modal-label">
+                Skills required
+                <select
+                  value={skillsRequired[0] || ''}
+                  onChange={(e) => setSkillsRequired(e.target.value ? [e.target.value] : [])}
+                  className="modal-input"
+                >
+                  <option value="">— Select skill —</option>
                   {skills.map((sk) => (
-                    <label key={sk._id} className="modal-checkbox-label">
-                      <input type="checkbox" checked={skillsRequired.includes(sk._id)} onChange={() => toggleSkill(sk._id)} />
-                      <span>{sk.name}</span>
-                    </label>
+                    <option key={sk._id} value={sk._id}>{sk.name}</option>
                   ))}
-                </div>
-              </div>
+                </select>
+              </label>
             </section>
           )}
           <section className="modal-section">

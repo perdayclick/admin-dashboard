@@ -32,7 +32,7 @@ export default function Login() {
       const res = await authApi.login(email.trim(), password)
       const { user, accessToken, refreshToken, expiresAt } = res.data
       setAuth({ user, accessToken, refreshToken, expiresAt })
-      navigate(from, { replace: true })
+      // Redirect is done by useEffect when isAuthenticated becomes true (avoids race with ProtectedRoute)
     } catch (err) {
       const msg = err.body?.message || err.body?.error || err.message || 'Login failed'
       setError(typeof msg === 'string' ? msg : 'Invalid email or password')

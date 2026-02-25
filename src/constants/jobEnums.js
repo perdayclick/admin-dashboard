@@ -5,6 +5,10 @@ export const JOB_STATUS = {
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
   LIVE: 'LIVE',
+  HIRED: 'HIRED',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
+  INACTIVE_PENDING_PAYMENT: 'INACTIVE_PENDING_PAYMENT',
   CLOSED: 'CLOSED',
 }
 
@@ -26,6 +30,10 @@ export const JOB_STATUS_OPTIONS = [
   { value: JOB_STATUS.APPROVED, label: 'Approved' },
   { value: JOB_STATUS.REJECTED, label: 'Rejected' },
   { value: JOB_STATUS.LIVE, label: 'Live' },
+  { value: JOB_STATUS.HIRED, label: 'Booked' },
+  { value: JOB_STATUS.COMPLETED, label: 'Completed' },
+  { value: JOB_STATUS.CANCELLED, label: 'Cancelled' },
+  { value: JOB_STATUS.INACTIVE_PENDING_PAYMENT, label: 'Inactive (unpaid)' },
   { value: JOB_STATUS.CLOSED, label: 'Closed' },
 ]
 
@@ -85,15 +93,33 @@ export const CHECK_IN_METHOD_OPTIONS = [
   { value: CHECK_IN_METHOD.MANUAL, label: 'Manual' },
 ]
 
+export const CANCELLATION_REASON = {
+  NOT_FIT: 'NOT_FIT',
+  CHANGED_PLAN: 'CHANGED_PLAN',
+  DUPLICATE: 'DUPLICATE',
+  OTHER: 'OTHER',
+}
+
+/** Status label for UI. HIRED = "Booked" (job has worker assigned). */
 export function jobStatusLabel(s) {
-  const map = { PENDING: 'Pending', APPROVED: 'Approved', LIVE: 'Live', CLOSED: 'Closed', REJECTED: 'Rejected' }
+  const map = {
+    PENDING: 'Pending',
+    APPROVED: 'Approved',
+    LIVE: 'Live',
+    HIRED: 'Booked',
+    COMPLETED: 'Completed',
+    CANCELLED: 'Cancelled',
+    INACTIVE_PENDING_PAYMENT: 'Inactive (unpaid)',
+    CLOSED: 'Closed',
+    REJECTED: 'Rejected',
+  }
   return map[s] || s || '—'
 }
 
 export function jobStatusBadgeClass(s) {
   if (s === 'LIVE') return 'badge-success'
-  if (s === 'APPROVED') return 'badge-info'
-  if (s === 'CLOSED') return 'badge-secondary'
-  if (s === 'REJECTED') return 'badge-danger'
+  if (s === 'APPROVED' || s === 'HIRED') return 'badge-info'
+  if (s === 'COMPLETED' || s === 'CLOSED') return 'badge-secondary'
+  if (s === 'REJECTED' || s === 'CANCELLED' || s === 'INACTIVE_PENDING_PAYMENT') return 'badge-danger'
   return 'badge-warning'
 }

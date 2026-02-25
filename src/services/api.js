@@ -18,12 +18,22 @@ export async function apiRequest(endpoint, options = {}) {
 
   const res = await fetch(url, { ...options, headers })
   if (res.status === 401) {
-    localStorage.removeItem('admin_access_token')
-    localStorage.removeItem('admin_refresh_token')
-    localStorage.removeItem('admin_user')
-    window.dispatchEvent(new Event('auth:logout'))
-    const err = new Error('Session expired')
+    // Only clear session and redirect when we had a token (authenticated request failed).
+    // Do NOT treat 401 on login endpoint as "session expired" — that's invalid credentials.
+    const isLoginRequest = url.includes('/auth/admin/login')
+    if (!isLoginRequest) {
+      localStorage.removeItem('admin_access_token')
+      localStorage.removeItem('admin_refresh_token')
+      localStorage.removeItem('admin_user')
+      window.dispatchEvent(new Event('auth:logout'))
+    }
+    const err = new Error(isLoginRequest ? 'Invalid email or password' : 'Session expired')
     err.status = 401
+    try {
+      err.body = await res.clone().json()
+    } catch {
+      err.body = {}
+    }
     throw err
   }
   if (!res.ok) {
@@ -161,6 +171,36 @@ export const jobsApi = {
     }),
   unassignWorker: (jobId, workerId) =>
     apiRequest(`/api/job/${jobId}/assign/${workerId}`, { method: 'DELETE' }),
+  // Job flow – employer uses own token; admin passes employerId (query or body)
+  getApplicants: (jobId, employerId) =>
+    apiRequest(`/api/job/${jobId}/applicants${employerId ? `?employerId=${encodeURIComponent(employerId)}` : ''}`),
+  /** Single employer-action API: action = 'hire' | 'complete' | 'cancel' | 'pay-service-charge'. Payload: { workerId?, completeImmediately?, employerId?, cancellationReason?, cancellationNote? }. */
+  action: (jobId, action, payload = {}) =>
+    apiRequest(`/api/job/${jobId}/action`, {
+      method: 'POST',
+      body: JSON.stringify({ action, ...payload }),
+    }),
+  // Legacy per-action helpers (internally can call action; kept for compatibility)
+  hire: (jobId, workerId, employerId, completeImmediately) =>
+    apiRequest(`/api/job/${jobId}/action`, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'hire', workerId, ...(employerId && { employerId }), ...(completeImmediately && { completeImmediately }) }),
+    }),
+  complete: (jobId, employerId) =>
+    apiRequest(`/api/job/${jobId}/action`, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'complete', ...(employerId && { employerId }) }),
+    }),
+  cancel: (jobId, body) =>
+    apiRequest(`/api/job/${jobId}/action`, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'cancel', ...body }),
+    }),
+  payServiceCharge: (jobId, employerId) =>
+    apiRequest(`/api/job/${jobId}/action`, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'pay-service-charge', ...(employerId && { employerId }) }),
+    }),
 }
 
 // Skills (for job form dropdown)
