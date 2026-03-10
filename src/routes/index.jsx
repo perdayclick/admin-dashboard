@@ -12,6 +12,8 @@ import Jobs from '../pages/Jobs'
 import JobDetail from '../pages/JobDetail'
 import Placeholder from '../pages/Placeholder'
 import Categories from '../pages/Categories'
+import PaymentSuccess from '../pages/PaymentSuccess'
+import PaymentFail from '../pages/PaymentFail'
 
 export const router = createBrowserRouter(
   [
@@ -38,6 +40,8 @@ export const router = createBrowserRouter(
         { path: 'agents', element: <Placeholder title="Agents" /> },
         { path: 'jobs', element: <Jobs /> },
         { path: 'jobs/:jobId', element: <JobDetail /> },
+        { path: 'payment/success', element: <PaymentSuccess /> },
+        { path: 'payment/fail', element: <PaymentFail /> },
         { path: 'payments', element: <Placeholder title="Payments" /> },
         { path: 'analytics', element: <Placeholder title="Analytics" /> },
         { path: 'fraud', element: <Placeholder title="Fraud Control" /> },

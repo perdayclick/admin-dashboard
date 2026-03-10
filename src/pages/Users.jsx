@@ -149,7 +149,14 @@ export default function Users() {
         title="User Management"
         subtitle="Manage and monitor platform users"
         primaryAction={<Button variant="primary" onClick={() => setCreateOpen(true)}>Add User</Button>}
-        secondaryAction={<Button disabled>Export</Button>}
+        secondaryAction={
+          <>
+            <Button variant="secondary" onClick={() => fetchUsers(pagination.page)} disabled={loading} title="Refresh list">
+              {loading ? 'Refreshing…' : 'Refresh'}
+            </Button>
+            <Button disabled>Export</Button>
+          </>
+        }
       />
 
       <div className="mgmt-cards">

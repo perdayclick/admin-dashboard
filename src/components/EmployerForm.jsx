@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { KYC_FORM_OPTIONS } from '../constants/kyc'
 import { AVAILABILITY_OPTIONS, VERIFICATION_TYPE_OPTIONS } from '../constants/schemaEnums'
 import './Modal.css'
 
@@ -20,40 +19,44 @@ export default function EmployerForm({ title, employer, onSubmit, onClose, error
   const [availabilityStatus, setAvailabilityStatus] = useState('')
   const [verificationType, setVerificationType] = useState('')
   const [address, setAddress] = useState(emptyAddress)
-  const [kycStatus, setKycStatus] = useState('')
-  const [remarks, setRemarks] = useState('')
 
   useEffect(() => {
     if (employer) {
       const u = employer.userId || employer.user
-      setPhone(u?.phone ?? employer.phone ?? '')
-      setEmail(u?.email ?? employer.email ?? '')
-      setFullName(employer.fullName || '')
-      setGender(employer.gender || '')
-      setBusinessName(employer.businessName || '')
-      setCompanyName(employer.companyName || '')
-      setGstNumber(employer.gstNumber || '')
+      setPhone((u?.phone ?? employer.phone ?? '').toString())
+      setEmail((u?.email ?? employer.email ?? '').toString())
+      setFullName((employer.fullName ?? '').toString())
+      setGender((employer.gender ?? '').toString())
+      setBusinessName((employer.businessName ?? '').toString())
+      setCompanyName((employer.companyName ?? '').toString())
+      setGstNumber((employer.gstNumber ?? '').toString())
       setDob(employer.dob ? (typeof employer.dob === 'string' ? employer.dob.slice(0, 10) : employer.dob.toISOString?.().slice(0, 10)) : '')
-      setContactPersonName(employer.contactPersonName || '')
-      setJobCategories(Array.isArray(employer.jobCategories) ? employer.jobCategories.join(', ') : '')
-      setAvailabilityStatus(employer.availabilityStatus || '')
-      setVerificationType(employer.verificationType || '')
+      setContactPersonName((employer.contactPersonName ?? '').toString())
+      setJobCategories(Array.isArray(employer.jobCategories) ? employer.jobCategories.join(', ') : (employer.jobCategories != null ? String(employer.jobCategories) : ''))
+      setAvailabilityStatus((employer.availabilityStatus ?? '').toString())
+      setVerificationType((employer.verificationType ?? '').toString())
       const addr = Array.isArray(employer.address) && employer.address[0] ? employer.address[0] : {}
       setAddress({
-        addressText: addr.addressText || '',
-        city: addr.city || '',
-        state: addr.state || '',
-        pincode: addr.pincode || '',
-        country: addr.country || '',
+        addressText: (addr.addressText ?? '').toString(),
+        city: (addr.city ?? '').toString(),
+        state: (addr.state ?? '').toString(),
+        pincode: (addr.pincode ?? '').toString(),
+        country: (addr.country ?? '').toString(),
       })
-      setKycStatus(employer.kyc?.status || '')
-      setRemarks(employer.kyc?.remarks || '')
     } else {
-      setAddress(emptyAddress)
-      setKycStatus('')
-      setRemarks('')
+      setPhone('')
+      setEmail('')
       setFullName('')
       setGender('')
+      setBusinessName('')
+      setCompanyName('')
+      setGstNumber('')
+      setDob('')
+      setContactPersonName('')
+      setJobCategories('')
+      setAvailabilityStatus('')
+      setVerificationType('')
+      setAddress(emptyAddress)
     }
   }, [employer])
 
@@ -96,8 +99,6 @@ export default function EmployerForm({ title, employer, onSubmit, onClose, error
         verificationType: payload.verificationType,
         address: payload.address,
       }
-      if (kycStatus) updatePayload.kycStatus = kycStatus
-      if (remarks !== undefined) updatePayload.remarks = remarks
       onSubmit(updatePayload)
     } else {
       onSubmit(payload)
@@ -209,23 +210,6 @@ export default function EmployerForm({ title, employer, onSubmit, onClose, error
               <input type="text" value={address.country} onChange={(e) => setAddress((a) => ({ ...a, country: e.target.value }))} placeholder="Country" className="modal-input" />
             </label>
           </section>
-          {mode === 'edit' && (
-            <section className="modal-section">
-              <h3 className="modal-section-title">KYC (admin)</h3>
-              <label className="modal-label">
-                KYC status
-                <select value={kycStatus} onChange={(e) => setKycStatus(e.target.value)} className="modal-input">
-                  {KYC_FORM_OPTIONS.map((o) => (
-                    <option key={o.value || 'none'} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="modal-label">
-                KYC remarks
-                <input type="text" value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Remarks" className="modal-input" />
-              </label>
-            </section>
-          )}
           <div className="modal-actions">
             <button type="button" className="modal-btn secondary" onClick={onClose}>Cancel</button>
             <button type="submit" className="modal-btn primary" disabled={submitting}>

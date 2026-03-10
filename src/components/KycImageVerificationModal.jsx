@@ -60,12 +60,8 @@ export default function KycImageVerificationModal({
     const rejectedImages = allImageItems
       .filter((item) => selectedUrls.has(item.imageUrl))
       .map((item) => ({ imageType: item.imageType, imageUrl: item.imageUrl }))
-    if (rejectedImages.length === 0) {
-      setRejectFormError('Please select at least one image to reject.')
-      return
-    }
     if (!reasonTrim) {
-      setRejectFormError('Please provide a reason for rejection (KycRejectedReason is required).')
+      setRejectFormError('Please provide a reason for rejection (required).')
       return
     }
     setRejectFormError('')
@@ -96,9 +92,9 @@ export default function KycImageVerificationModal({
         <div className="modal-body kycm-modal-body">
           {showRejectForm ? (
             <div className="kycm-reject-form">
-              <p className="kycm-reject-intro">Select one or more images to reject, then provide the reason.</p>
+              <p className="kycm-reject-intro">Optionally select which image(s) to reject; then provide the reason (required).</p>
               <div className="kycm-form-group">
-                <label className="kycm-checkbox-label">Select image(s) to reject <span className="required">*</span></label>
+                <label className="kycm-checkbox-label">Select image(s) to reject (optional)</label>
                 <div className="kycm-image-checkbox-list">
                   {allImageItems.map((item) => (
                     <label key={item.imageUrl + item.label} className="kycm-image-checkbox-item">

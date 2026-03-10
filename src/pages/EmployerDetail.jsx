@@ -20,7 +20,6 @@ export default function EmployerDetail() {
   const [employer, setEmployer] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [submitting, setSubmitting] = useState(false)
   const [kycImageModalOpen, setKycImageModalOpen] = useState(false)
   const [kycImageSubmitting, setKycImageSubmitting] = useState(false)
 
@@ -39,28 +38,19 @@ export default function EmployerDetail() {
     return () => { cancelled = true }
   }, [employerId])
 
-  const handleApproveKyc = async () => {
-    if (!employer) return
-    setSubmitting(true)
-    try {
-      const res = await employersApi.update(employer._id, { kycStatus: 'APPROVED' })
-      setEmployer(res.data || res)
-    } catch (err) {
-      setError(getErrorMessage(err, 'Failed to approve KYC'))
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
+  /** Modal Approve: sets both kycImageVerification and kycStatus to approved. */
   const handleKycImageApprove = async () => {
     if (!employer) return
     setKycImageSubmitting(true)
     try {
-      const res = await employersApi.update(employer._id, { kycImageVerification: 'VERIFIED' })
+      const res = await employersApi.update(employer._id, {
+        kycImageVerification: 'VERIFIED',
+        kycStatus: 'APPROVED',
+      })
       setEmployer(res.data || res)
       setKycImageModalOpen(false)
     } catch (err) {
-      setError(getErrorMessage(err, 'Failed to update image verification'))
+      setError(getErrorMessage(err, 'Failed to approve KYC'))
     } finally {
       setKycImageSubmitting(false)
     }
@@ -107,11 +97,6 @@ export default function EmployerDetail() {
       <PageHeader
         title="Employer details"
         subtitle="Review employer profile and KYC"
-        primaryAction={kyc?.status !== 'APPROVED' && (
-          <Button variant="primary" onClick={handleApproveKyc} disabled={submitting}>
-            Approve KYC
-          </Button>
-        )}
         secondaryAction={<Button onClick={() => navigate('/employers')}>← Back to Employers</Button>}
       />
 

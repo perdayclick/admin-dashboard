@@ -117,7 +117,14 @@ export default function Employers() {
         title="Employer Management"
         subtitle="Manage company accounts and verify KYC"
         primaryAction={<Button variant="primary" onClick={() => setCreateOpen(true)}>Add Employer</Button>}
-        secondaryAction={<Button disabled>Export</Button>}
+        secondaryAction={
+          <>
+            <Button variant="secondary" onClick={() => fetchEmployers(pagination.page)} disabled={loading} title="Refresh list">
+              {loading ? 'Refreshing…' : 'Refresh'}
+            </Button>
+            <Button disabled>Export</Button>
+          </>
+        }
       />
 
       <div className="mgmt-cards">
