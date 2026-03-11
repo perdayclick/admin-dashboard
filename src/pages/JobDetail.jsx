@@ -342,6 +342,9 @@ export default function JobDetail() {
   const canGoLive = job?.status === JOB_STATUS.APPROVED
   const canClose = job?.status === JOB_STATUS.APPROVED || job?.status === JOB_STATUS.LIVE
   const canEdit = true
+  const isLive = job?.status === JOB_STATUS.LIVE
+  const isHired = job?.status === 'HIRED'
+  const isInactiveUnpaid = job?.status === 'INACTIVE_PENDING_PAYMENT'
 
   const salaryDisplay = job?.perDayPayout != null ? `₹${job.perDayPayout}/day` : job?.salaryOrPayout != null ? `₹${job.salaryOrPayout}` : '—'
 
