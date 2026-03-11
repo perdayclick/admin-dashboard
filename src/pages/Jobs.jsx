@@ -170,6 +170,11 @@ export default function Jobs() {
         title="Jobs & Tasks Control"
         subtitle="Review, approve, and monitor all job postings."
         primaryAction={<Button variant="primary" onClick={() => setCreateOpen(true)}>Create Job</Button>}
+        secondaryAction={
+          <Button variant="secondary" onClick={() => fetchJobs(pagination.page)} disabled={loading} title="Refresh list">
+            {loading ? 'Refreshing…' : 'Refresh'}
+          </Button>
+        }
       />
 
       <div className="mgmt-cards">

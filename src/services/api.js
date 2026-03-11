@@ -161,6 +161,36 @@ export const jobsApi = {
     }),
   unassignWorker: (jobId, workerId) =>
     apiRequest(`/api/job/${jobId}/assign/${workerId}`, { method: 'DELETE' }),
+  // Job flow – employer uses own token; admin passes employerId (query or body)
+  getApplicants: (jobId, employerId) =>
+    apiRequest(`/api/job/${jobId}/applicants${employerId ? `?employerId=${encodeURIComponent(employerId)}` : ''}`),
+  /** Single employer-action API: action = 'hire' | 'reject' | 'complete' | 'cancel' | 'pay-service-charge'. Payload: { workerId? (required for hire/reject), completeImmediately?, employerId?, cancellationReason?, cancellationNote? }. */
+  action: (jobId, action, payload = {}) =>
+    apiRequest(`/api/job/${jobId}/action`, {
+      method: 'POST',
+      body: JSON.stringify({ action, ...payload }),
+    }),
+  // Legacy per-action helpers (internally can call action; kept for compatibility)
+  hire: (jobId, workerId, employerId, completeImmediately) =>
+    apiRequest(`/api/job/${jobId}/action`, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'hire', workerId, ...(employerId && { employerId }), ...(completeImmediately && { completeImmediately }) }),
+    }),
+  complete: (jobId, employerId) =>
+    apiRequest(`/api/job/${jobId}/action`, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'complete', ...(employerId && { employerId }) }),
+    }),
+  cancel: (jobId, body) =>
+    apiRequest(`/api/job/${jobId}/action`, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'cancel', ...body }),
+    }),
+  payServiceCharge: (jobId, employerId) =>
+    apiRequest(`/api/job/${jobId}/action`, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'pay-service-charge', ...(employerId && { employerId }) }),
+    }),
 }
 
 // Skills (for job form dropdown)
@@ -173,6 +203,22 @@ export const skillsApi = {
     const q = sp.toString()
     return apiRequest(`/api/skills${q ? `?${q}` : ''}`)
   },
+}
+
+// Payment (Razorpay): create order for job, verify, job payment status (admin)
+export const paymentApi = {
+  createOrderForJob: (jobId) =>
+    apiRequest('/api/payment/create-order-for-job', {
+      method: 'POST',
+      body: JSON.stringify({ jobId }),
+    }),
+  verify: (data) =>
+    apiRequest('/api/payment/verify', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getJobPaymentStatus: (jobId) =>
+    apiRequest(`/api/payment/job/${jobId}/payment-status`),
 }
 
 // Categories (all under /api/categories; with admin token list returns all, without token only active)

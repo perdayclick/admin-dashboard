@@ -117,7 +117,14 @@ export default function Workers() {
         title="Worker Management"
         subtitle="Manage workers and verify KYC"
         primaryAction={<Button variant="primary" onClick={() => setCreateOpen(true)}>Add Worker</Button>}
-        secondaryAction={<Button disabled>Export</Button>}
+        secondaryAction={
+          <>
+            <Button variant="secondary" onClick={() => fetchWorkers(pagination.page)} disabled={loading} title="Refresh list">
+              {loading ? 'Refreshing…' : 'Refresh'}
+            </Button>
+            <Button disabled>Export</Button>
+          </>
+        }
       />
 
       <div className="mgmt-cards">

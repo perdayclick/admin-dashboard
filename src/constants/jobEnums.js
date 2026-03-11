@@ -85,6 +85,14 @@ export const CHECK_IN_METHOD_OPTIONS = [
   { value: CHECK_IN_METHOD.MANUAL, label: 'Manual' },
 ]
 
+/** Cancellation reason when employer cancels a hired worker (match backend) */
+export const CANCELLATION_REASON = {
+  NOT_FIT: 'NOT_FIT',
+  CHANGED_PLAN: 'CHANGED_PLAN',
+  DUPLICATE: 'DUPLICATE',
+  OTHER: 'OTHER',
+}
+
 export function jobStatusLabel(s) {
   const map = { PENDING: 'Pending', APPROVED: 'Approved', LIVE: 'Live', CLOSED: 'Closed', REJECTED: 'Rejected' }
   return map[s] || s || '—'

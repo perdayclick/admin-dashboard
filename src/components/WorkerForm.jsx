@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { KYC_FORM_OPTIONS } from '../constants/kyc'
 import { AVAILABILITY_OPTIONS, WORKER_LEVEL_OPTIONS } from '../constants/schemaEnums'
 import './Modal.css'
 
@@ -20,8 +19,6 @@ export default function WorkerForm({ title, worker, onSubmit, onClose, error, su
   const [availabilityStatus, setAvailabilityStatus] = useState('')
   const [workerLevel, setWorkerLevel] = useState('')
   const [address, setAddress] = useState(emptyAddress)
-  const [kycStatus, setKycStatus] = useState('')
-  const [remarks, setRemarks] = useState('')
 
   useEffect(() => {
     if (worker) {
@@ -46,12 +43,8 @@ export default function WorkerForm({ title, worker, onSubmit, onClose, error, su
         pincode: addr.pincode || '',
         country: addr.country || '',
       })
-      setKycStatus(worker.kyc?.status || '')
-      setRemarks(worker.kyc?.remarks || '')
     } else {
       setAddress(emptyAddress)
-      setKycStatus('')
-      setRemarks('')
     }
   }, [worker])
 
@@ -97,8 +90,6 @@ export default function WorkerForm({ title, worker, onSubmit, onClose, error, su
         workerLevel: payload.workerLevel,
         address: payload.address,
       }
-      if (kycStatus) updatePayload.kycStatus = kycStatus
-      if (remarks !== undefined) updatePayload.remarks = remarks
       onSubmit(updatePayload)
     } else {
       onSubmit(payload)
@@ -210,23 +201,6 @@ export default function WorkerForm({ title, worker, onSubmit, onClose, error, su
               <input type="text" value={address.country} onChange={(e) => setAddress((a) => ({ ...a, country: e.target.value }))} placeholder="Country" className="modal-input" />
             </label>
           </section>
-          {mode === 'edit' && (
-            <section className="modal-section">
-              <h3 className="modal-section-title">KYC (admin)</h3>
-              <label className="modal-label">
-                KYC status
-                <select value={kycStatus} onChange={(e) => setKycStatus(e.target.value)} className="modal-input">
-                  {KYC_FORM_OPTIONS.map((o) => (
-                    <option key={o.value || 'none'} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="modal-label">
-                KYC remarks
-                <input type="text" value={remarks} onChange={(e) => setRemarks(e.target.value)} placeholder="Remarks" className="modal-input" />
-              </label>
-            </section>
-          )}
           <div className="modal-actions">
             <button type="button" className="modal-btn secondary" onClick={onClose}>Cancel</button>
             <button type="submit" className="modal-btn primary" disabled={submitting}>
