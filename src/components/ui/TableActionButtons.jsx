@@ -1,7 +1,7 @@
 /**
- * View / Edit / Delete / Toggle Active action buttons for table rows.
+ * View / Edit / Block / Unblock / Delete / Toggle Active action buttons for table rows.
  */
-export default function TableActionButtons({ onView, onEdit, onDelete, onToggleActive, toggleActiveLabel }) {
+export default function TableActionButtons({ onView, onEdit, onDelete, onBlock, onUnblock, onToggleActive, toggleActiveLabel }) {
   return (
     <div className="mgmt-actions-cell">
       {onView && (
@@ -17,6 +17,16 @@ export default function TableActionButtons({ onView, onEdit, onDelete, onToggleA
       {onEdit && (
         <button type="button" className="mgmt-action-btn" onClick={onEdit}>
           Edit
+        </button>
+      )}
+      {onBlock && (
+        <button type="button" className="mgmt-action-btn mgmt-action-btn-warning" onClick={onBlock}>
+          Block
+        </button>
+      )}
+      {onUnblock && (
+        <button type="button" className="mgmt-action-btn mgmt-action-btn-success" onClick={onUnblock}>
+          Unblock
         </button>
       )}
       {onDelete && (

@@ -86,14 +86,16 @@ export default function WorkerDetail() {
   }
 
   const u = worker?.userId || worker?.user
-  const phone = u?.phone ?? worker?.phone ?? '—'
+  const phone = u?.phone ?? worker?.phoneNumber ?? worker?.phone ?? '—'
   const email = u?.email ?? worker?.email ?? '—'
   const kyc = worker?.kyc
   const addr = Array.isArray(worker?.address) && worker.address[0] ? worker.address[0] : null
   const wallet = worker?.wallet
+  const displayName = worker?.fullName || worker?.phoneNumber || (phone !== '—' ? phone : 'Worker')
+  const isLocked = worker?.isLocked === true
 
   return (
-    <div className="mgmt-page">
+    <div className="mgmt-page job-detail-page">
       <PageHeader
         title="Worker details"
         subtitle="Review worker profile and KYC"
@@ -101,6 +103,44 @@ export default function WorkerDetail() {
       />
 
       {error && worker && <Alert variant="error" className="mgmt-alert">{error}</Alert>}
+
+      <div className="job-view-hero">
+        <div className="job-view-hero-main">
+          <h2 className="job-view-title">{displayName}</h2>
+          {worker?.workerLevel && <span className="mgmt-badge badge-info">{worker.workerLevel}</span>}
+          {worker?.availabilityStatus && worker.availabilityStatus !== 'AVAILABLE' && (
+            <span className="mgmt-badge badge-secondary">{worker.availabilityStatus}</span>
+          )}
+          {isLocked && <span className="mgmt-badge badge-warning">Locked (assigned to job)</span>}
+        </div>
+        {(phone !== '—' || worker?.uniqueWorkerId) && (
+          <p className="job-view-posted">
+            {phone !== '—' && <span>{phone}</span>}
+            {worker?.uniqueWorkerId && <span>{phone !== '—' ? ' · ' : ''}ID: {worker.uniqueWorkerId}</span>}
+          </p>
+        )}
+      </div>
+
+      <div className="job-view-stats">
+        <div className="job-view-stat">
+          <span className="job-view-stat-value">{worker?.profileScore ?? '—'}</span>
+          <span className="job-view-stat-label">Profile score</span>
+        </div>
+        <div className="job-view-stat">
+          <span className="job-view-stat-value">{worker?.ratingAverage ?? '—'}</span>
+          <span className="job-view-stat-label">Rating</span>
+        </div>
+        <div className="job-view-stat">
+          <span className="job-view-stat-value">{kyc?.status === 'APPROVED' ? 'Verified' : kyc?.status || '—'}</span>
+          <span className="job-view-stat-label">KYC status</span>
+        </div>
+        {worker?.dailyEarningExpectation != null && (
+          <div className="job-view-stat">
+            <span className="job-view-stat-value">₹{worker.dailyEarningExpectation}</span>
+            <span className="job-view-stat-label">Daily expectation</span>
+          </div>
+        )}
+      </div>
 
       <div className="job-view-grid detail-view">
         {/* KYC first – full width */}
@@ -266,8 +306,8 @@ export default function WorkerDetail() {
             <span className="view-value">{worker?.experienceLevel || '—'}</span>
           </div>
           <div className="view-row">
-            <span className="view-label">Daily earning expectation (₹)</span>
-            <span className="view-value">{worker?.dailyEarningExpectation ?? '—'}</span>
+            <span className="view-label">Daily earning expectation</span>
+            <span className="view-value">{worker?.dailyEarningExpectation != null ? `₹${Number(worker.dailyEarningExpectation).toLocaleString('en-IN')}` : '—'}</span>
           </div>
         </section>
 

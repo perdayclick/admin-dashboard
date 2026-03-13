@@ -85,6 +85,18 @@ export const CHECK_IN_METHOD_OPTIONS = [
   { value: CHECK_IN_METHOD.MANUAL, label: 'Manual' },
 ]
 
+export const SHIFT_SLOT = {
+  FIRST_HALF: 'FIRST_HALF',
+  SECOND_HALF: 'SECOND_HALF',
+  FULL_DAY: 'FULL_DAY',
+}
+
+export const SHIFT_SLOT_LABELS = {
+  [SHIFT_SLOT.FIRST_HALF]: 'First half',
+  [SHIFT_SLOT.SECOND_HALF]: 'Second half',
+  [SHIFT_SLOT.FULL_DAY]: 'Full day',
+}
+
 /** Cancellation reason when employer cancels a hired worker (match backend) */
 export const CANCELLATION_REASON = {
   NOT_FIT: 'NOT_FIT',
@@ -94,14 +106,26 @@ export const CANCELLATION_REASON = {
 }
 
 export function jobStatusLabel(s) {
-  const map = { PENDING: 'Pending', APPROVED: 'Approved', LIVE: 'Live', CLOSED: 'Closed', REJECTED: 'Rejected' }
+  const map = {
+    PENDING: 'Pending',
+    APPROVED: 'Approved',
+    LIVE: 'Live',
+    CLOSED: 'Closed',
+    REJECTED: 'Rejected',
+    HIRED: 'Hired',
+    COMPLETED: 'Completed',
+    INACTIVE_PENDING_PAYMENT: 'Pending payment',
+  }
   return map[s] || s || '—'
 }
 
 export function jobStatusBadgeClass(s) {
   if (s === 'LIVE') return 'badge-success'
   if (s === 'APPROVED') return 'badge-info'
+  if (s === 'COMPLETED') return 'badge-success'
+  if (s === 'HIRED') return 'badge-info'
   if (s === 'CLOSED') return 'badge-secondary'
   if (s === 'REJECTED') return 'badge-danger'
+  if (s === 'INACTIVE_PENDING_PAYMENT') return 'badge-warning'
   return 'badge-warning'
 }
