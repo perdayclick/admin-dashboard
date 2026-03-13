@@ -16,6 +16,7 @@ import {
 import UserForm from '../components/UserForm'
 import UserView from '../components/UserView'
 import ConfirmModal from '../components/ConfirmModal'
+import InactiveDateModal from '../components/InactiveDateModal'
 import '../styles/ManagementPage.css'
 
 function getRoleName(user) {
@@ -41,7 +42,8 @@ export default function Users() {
   const [createOpen, setCreateOpen] = useState(false)
   const [editUser, setEditUser] = useState(null)
   const [viewUser, setViewUser] = useState(null)
-  const [deleteUser, setDeleteUser] = useState(null)
+  const [blockUser, setBlockUser] = useState(null)
+  const [inactiveModalUser, setInactiveModalUser] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
 
@@ -119,15 +121,57 @@ export default function Users() {
     }
   }
 
-  const handleDeleteConfirm = async () => {
-    if (!deleteUser) return
+  const handleBlockConfirm = async () => {
+    if (!blockUser) return
     setSubmitting(true)
     try {
-      await usersApi.delete(deleteUser._id)
-      setDeleteUser(null)
+      await usersApi.update(blockUser._id, { isBlocked: true })
+      setBlockUser(null)
       fetchUsers(pagination.page)
     } catch (err) {
-      setError(getErrorMessage(err, 'Delete failed'))
+      setError(getErrorMessage(err, 'Block failed'))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleUnblock = async (user) => {
+    setSubmitting(true)
+    try {
+      await usersApi.update(user._id, { isBlocked: false })
+      fetchUsers(pagination.page)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Unblock failed'))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleSetInactive = async (userId, payload) => {
+    setFormError('')
+    setSubmitting(true)
+    try {
+      // Send ISO 8601 strings so backend validation accepts them (input type="date" gives YYYY-MM-DD only)
+      const inactiveFrom = payload.inactiveFrom ? new Date(payload.inactiveFrom).toISOString() : null
+      const inactiveTo = payload.inactiveTo ? new Date(payload.inactiveTo).toISOString() : null
+      await usersApi.update(userId, { isActive: false, inactiveFrom, inactiveTo })
+      setInactiveModalUser(null)
+      fetchUsers(pagination.page)
+    } catch (err) {
+      setFormError(getErrorMessage(err, 'Set inactive failed'))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleSetActive = async (user) => {
+    setFormError('')
+    setSubmitting(true)
+    try {
+      await usersApi.update(user._id, { isActive: true, inactiveFrom: null, inactiveTo: null })
+      fetchUsers(pagination.page)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Set active failed'))
     } finally {
       setSubmitting(false)
     }
@@ -189,7 +233,7 @@ export default function Users() {
 
       {error && <Alert>{error}</Alert>}
 
-      <DataTable loading={loading} loadingMessage="Loading users…" emptyColSpan={6}>
+      <DataTable loading={loading} loadingMessage="Loading users…" emptyColSpan={7}>
         {!loading && (
           <table className="mgmt-table">
             <thead>
@@ -198,16 +242,18 @@ export default function Users() {
                 <th>USER</th>
                 <th>ROLE</th>
                 <th>STATUS</th>
+                <th>ACTIVE</th>
                 <th>JOINED</th>
                 <th>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
               {users.length === 0 ? (
-                <TableEmptyRow colSpan={6} message="No users found" />
+                <TableEmptyRow colSpan={7} message="No users found" />
               ) : (
                 users.map((user) => {
                   const status = getStatus(user)
+                  const isActive = user.isActive
                   return (
                     <tr key={user._id}>
                       <td><input type="checkbox" aria-label={`Select ${user.email || user.phone}`} /></td>
@@ -220,12 +266,35 @@ export default function Users() {
                       </td>
                       <td>{getRoleName(user)}</td>
                       <td><span className={`mgmt-badge mgmt-status-${status.statusKey}`}>{status.label}</span></td>
+                      <td>
+                        <label className="mgmt-toggle-wrap">
+                          <input
+                            type="checkbox"
+                            className="mgmt-switch-input"
+                            checked={isActive}
+                            onChange={() => {
+                              if (isActive) {
+                                setInactiveModalUser(user)
+                              } else {
+                                handleSetActive(user)
+                              }
+                            }}
+                            disabled={user.isBlocked}
+                            aria-label={isActive ? 'Active' : 'Inactive'}
+                          />
+                          <span className="mgmt-switch-track" aria-hidden="true">
+                            <span className="mgmt-switch-thumb" />
+                          </span>
+                          <span className="mgmt-toggle-label">{isActive ? 'Active' : 'Inactive'}</span>
+                        </label>
+                      </td>
                       <td>{user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}</td>
                       <td>
                         <TableActionButtons
                           onView={() => setViewUser(user)}
                           onEdit={() => setEditUser(user)}
-                          onDelete={() => setDeleteUser(user)}
+                          onBlock={!user.isBlocked ? () => setBlockUser(user) : undefined}
+                          onUnblock={user.isBlocked ? () => handleUnblock(user) : undefined}
                         />
                       </td>
                     </tr>
@@ -269,15 +338,24 @@ export default function Users() {
         />
       )}
       {viewUser && <UserView user={viewUser} onClose={() => setViewUser(null)} />}
-      {deleteUser && (
+      {blockUser && (
         <ConfirmModal
-          title="Delete User"
-          message={`Are you sure you want to delete this user? (${deleteUser.email || deleteUser.phone || deleteUser._id})`}
-          confirmLabel="Delete"
-          onConfirm={handleDeleteConfirm}
-          onCancel={() => setDeleteUser(null)}
+          title="Block User"
+          message={`Block this user? They will be able to login with phone and OTP but cannot perform any actions. They will see: "You have been blocked due to some reason." (${blockUser.email || blockUser.phone || blockUser._id})`}
+          confirmLabel="Block"
+          onConfirm={handleBlockConfirm}
+          onCancel={() => setBlockUser(null)}
           loading={submitting}
           variant="danger"
+        />
+      )}
+      {inactiveModalUser && (
+        <InactiveDateModal
+          user={inactiveModalUser}
+          onSubmit={(payload) => handleSetInactive(inactiveModalUser._id, payload)}
+          onCancel={() => { setInactiveModalUser(null); setFormError(''); }}
+          submitting={submitting}
+          error={formError}
         />
       )}
     </div>

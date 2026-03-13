@@ -86,21 +86,61 @@ export default function EmployerDetail() {
   }
 
   const u = employer?.userId || employer?.user
-  const phone = u?.phone ?? employer?.phone ?? '—'
+  const phone = u?.phone ?? employer?.contactPersonPhone ?? employer?.phone ?? '—'
   const email = u?.email ?? employer?.email ?? '—'
   const kyc = employer?.kyc
   const addr = Array.isArray(employer?.address) && employer.address[0] ? employer.address[0] : null
   const wallet = employer?.wallet
+  const displayName = employer?.businessName || employer?.companyName || employer?.contactPersonName || employer?.fullName || 'Employer'
+  const isLocked = employer?.isLocked === true
+  const serviceChargeDue = employer?.serviceChargeDue ?? 0
 
   return (
-    <div className="mgmt-page">
+    <div className="mgmt-page job-detail-page">
       <PageHeader
         title="Employer details"
         subtitle="Review employer profile and KYC"
+        primaryAction={<Button variant="secondary" onClick={() => navigate('/jobs?employerId=' + encodeURIComponent(employer._id))}>View jobs</Button>}
         secondaryAction={<Button onClick={() => navigate('/employers')}>← Back to Employers</Button>}
       />
 
       {error && employer && <Alert variant="error" className="mgmt-alert">{error}</Alert>}
+
+      <div className="job-view-hero">
+        <div className="job-view-hero-main">
+          <h2 className="job-view-title">{displayName}</h2>
+          {employer?.isVerified && <span className="mgmt-badge badge-success">Verified</span>}
+          {isLocked && <span className="mgmt-badge badge-warning">Locked (unpaid service charge)</span>}
+        </div>
+        {(employer?.contactPersonName || phone !== '—') && (
+          <p className="job-view-posted">
+            {employer?.contactPersonName && <span>Contact: {employer.contactPersonName}</span>}
+            {employer?.contactPersonName && phone !== '—' && ' · '}
+            {phone !== '—' && <span>{phone}</span>}
+          </p>
+        )}
+      </div>
+
+      <div className="job-view-stats">
+        <div className="job-view-stat">
+          <span className="job-view-stat-value">{employer?.totalJobsPosted ?? 0}</span>
+          <span className="job-view-stat-label">Jobs posted</span>
+        </div>
+        <div className="job-view-stat">
+          <span className="job-view-stat-value">{employer?.profileCompletionPercent ?? 0}%</span>
+          <span className="job-view-stat-label">Profile completion</span>
+        </div>
+        <div className="job-view-stat">
+          <span className="job-view-stat-value">{kyc?.status === 'APPROVED' ? 'Verified' : kyc?.status || '—'}</span>
+          <span className="job-view-stat-label">KYC status</span>
+        </div>
+        {serviceChargeDue > 0 && (
+          <div className="job-view-stat">
+            <span className="job-view-stat-value">₹{serviceChargeDue}</span>
+            <span className="job-view-stat-label">Service charge due</span>
+          </div>
+        )}
+      </div>
 
       <div className="job-view-grid detail-view">
         {/* KYC first – full width */}
@@ -146,10 +186,19 @@ export default function EmployerDetail() {
                   )}
                 </span>
               </div>
-              {kyc?.gstCertificate && (
+
+              {/* Aadhaar & business details below image verification */}
+              <p className="view-detail-section-subtitle view-detail-kyc-subtitle">Identity &amp; business details</p>
+              {kyc?.aadhaarReference && (
                 <div className="view-row">
-                  <span className="view-label">GST certificate</span>
-                  <span className="view-value">{kyc.gstCertificate}</span>
+                  <span className="view-label">Aadhaar reference</span>
+                  <span className="view-value">{kyc.aadhaarReference}</span>
+                </div>
+              )}
+              {(employer?.gstNumber || kyc?.gstCertificate) && (
+                <div className="view-row">
+                  <span className="view-label">GSTIN / GST number</span>
+                  <span className="view-value">{employer?.gstNumber || kyc?.gstCertificate || '—'}</span>
                 </div>
               )}
               {kyc?.companyPan && (
@@ -158,6 +207,29 @@ export default function EmployerDetail() {
                   <span className="view-value">{kyc.companyPan}</span>
                 </div>
               )}
+              {kyc?.gstCertificate && employer?.gstNumber !== kyc?.gstCertificate && (
+                <div className="view-row">
+                  <span className="view-label">GST certificate</span>
+                  <span className="view-value">{kyc.gstCertificate}</span>
+                </div>
+              )}
+              {(employer?.businessName || employer?.companyName) && (
+                <>
+                  {employer?.businessName && (
+                    <div className="view-row">
+                      <span className="view-label">Business name</span>
+                      <span className="view-value">{employer.businessName}</span>
+                    </div>
+                  )}
+                  {employer?.companyName && (
+                    <div className="view-row">
+                      <span className="view-label">Company name</span>
+                      <span className="view-value">{employer.companyName}</span>
+                    </div>
+                  )}
+                </>
+              )}
+
               {hasAnyKycImages(kyc) && (
                 <div className="view-row view-row-full">
                   <span className="view-label">Documents &amp; photos</span>

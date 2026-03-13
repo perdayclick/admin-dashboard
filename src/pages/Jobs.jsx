@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { jobsApi, employersApi, skillsApi } from '../services/api'
 import { JOB_STATUS, JOB_STATUS_OPTIONS, jobStatusLabel, jobStatusBadgeClass } from '../constants/jobEnums'
 import { WORK_TYPE_OPTIONS } from '../constants/jobEnums'
@@ -7,6 +7,7 @@ import { getErrorMessage } from '../utils/format'
 import {
   PageHeader,
   SummaryCard,
+  SearchToolbar,
   DataTable,
   TableEmptyRow,
   Pagination,
@@ -19,6 +20,8 @@ import '../styles/ManagementPage.css'
 
 export default function Jobs() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const employerIdFromUrl = searchParams.get('employerId') || ''
   const [jobs, setJobs] = useState([])
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 0 })
   const [loading, setLoading] = useState(true)
@@ -26,6 +29,7 @@ export default function Jobs() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [workTypeFilter, setWorkTypeFilter] = useState('')
+  const [employerFilter, setEmployerFilter] = useState(employerIdFromUrl)
   const [createOpen, setCreateOpen] = useState(false)
   const [editJob, setEditJob] = useState(null)
   const [deleteJob, setDeleteJob] = useState(null)
@@ -44,6 +48,7 @@ export default function Jobs() {
         limit: 10,
         status: statusFilter || undefined,
         workType: workTypeFilter || undefined,
+        employerId: employerFilter || undefined,
         search: search.trim() || undefined,
       })
       const payload = res?.data ?? res
@@ -57,7 +62,11 @@ export default function Jobs() {
     } finally {
       setLoading(false)
     }
-  }, [statusFilter, workTypeFilter, search])
+  }, [statusFilter, workTypeFilter, employerFilter, search])
+
+  useEffect(() => {
+    if (employerIdFromUrl) setEmployerFilter(employerIdFromUrl)
+  }, [employerIdFromUrl])
 
   useEffect(() => {
     fetchJobs(pagination.page)
@@ -159,10 +168,14 @@ export default function Jobs() {
     return d.toLocaleDateString()
   }
 
-  const totalJobs = pagination.total ?? jobs.length
+  const totalJobs = pagination.total ?? 0
   const totalPending = jobs.filter((j) => j.status === JOB_STATUS.PENDING).length
   const totalLive = jobs.filter((j) => j.status === JOB_STATUS.LIVE).length
   const totalClosed = jobs.filter((j) => j.status === JOB_STATUS.CLOSED).length
+
+  const statusOptions = JOB_STATUS_OPTIONS
+  const workTypeOptions = [{ value: '', label: 'All work types' }, ...WORK_TYPE_OPTIONS.filter((o) => o.value)]
+  const employerOptions = [{ value: '', label: 'All employers' }, ...employers.map((e) => ({ value: e._id, label: e.businessName || e.companyName || e.contactPersonName || e._id }))]
 
   return (
     <div className="mgmt-page">
@@ -184,81 +197,99 @@ export default function Jobs() {
         <SummaryCard value={totalClosed} label="Closed" />
       </div>
 
-      <div className="mgmt-toolbar">
-        <form
-          onSubmit={(e) => { e.preventDefault(); setPagination((p) => ({ ...p, page: 1 })); fetchJobs(1); }}
-          className="mgmt-filters"
-          style={{ flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}
-        >
-          <input
-            type="search"
-            placeholder="Search by job title, employer, or ID..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="mgmt-search-input"
-            style={{ minWidth: 220 }}
-          />
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="mgmt-select">
-            {JOB_STATUS_OPTIONS.map((o) => (
-              <option key={o.value || 'all'} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-          <select value={workTypeFilter} onChange={(e) => setWorkTypeFilter(e.target.value)} className="mgmt-select">
-            <option value="">All work types</option>
-            {WORK_TYPE_OPTIONS.filter((o) => o.value).map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-          <button type="submit" className="mgmt-btn mgmt-btn-primary">Apply</button>
-        </form>
-      </div>
+      <SearchToolbar
+        searchValue={search}
+        onSearchChange={setSearch}
+        onSearchSubmit={(e) => { e.preventDefault(); setPagination((p) => ({ ...p, page: 1 })); fetchJobs(1); }}
+        searchPlaceholder="Search by job title, employer, or ID..."
+        filterOptions={statusOptions}
+        filterValue={statusFilter}
+        onFilterChange={(v) => { setStatusFilter(v); setPagination((p) => ({ ...p, page: 1 })); }}
+        filterLabel="Status"
+        extraButton={
+          <>
+            <select
+              value={workTypeFilter}
+              onChange={(e) => { setWorkTypeFilter(e.target.value); setPagination((p) => ({ ...p, page: 1 })); }}
+              className="mgmt-select"
+              aria-label="Work type"
+            >
+              {workTypeOptions.map((o) => (
+                <option key={o.value || 'all'} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            <select
+              value={employerFilter}
+              onChange={(e) => { setEmployerFilter(e.target.value); setPagination((p) => ({ ...p, page: 1 })); }}
+              className="mgmt-select"
+              aria-label="Employer"
+              style={{ minWidth: 160 }}
+            >
+              {employerOptions.map((o) => (
+                <option key={o.value || 'all'} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            <Button variant="primary" onClick={() => fetchJobs(1)} disabled={loading}>
+              {loading ? 'Refreshing…' : 'Apply'}
+            </Button>
+          </>
+        }
+      />
 
       {error && <Alert variant="error" className="mgmt-alert">{error}</Alert>}
 
-      <DataTable loading={loading} emptyMessage="No jobs found" emptyColSpan={7}>
+      <DataTable loading={loading} loadingMessage="Loading jobs…" emptyColSpan={8}>
         <table className="mgmt-table">
           <thead>
             <tr>
-              <th>Job / Employer</th>
+              <th>Job</th>
+              <th>Employer</th>
               <th>Salary</th>
+              <th>Work type</th>
               <th>Status</th>
               <th>Workers</th>
-              <th>Assigned</th>
               <th>Posted</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {!loading && jobs.length === 0 && <TableEmptyRow colSpan={7} message="No jobs found" />}
+            {!loading && jobs.length === 0 && <TableEmptyRow colSpan={8} message="No jobs found" />}
             {jobs.map((j) => {
               const isPending = j.status === JOB_STATUS.PENDING
               const loadingThis = statusLoadingId === j._id
+              const empId = j.employerId?._id || j.employerId
               return (
                 <tr key={j._id}>
                   <td>
                     <button type="button" className="mgmt-link" onClick={() => navigate(`/jobs/${j._id}`)}>
                       {j.jobTitle || '—'}
                     </button>
-                    <div className="mgmt-table-meta">{getEmployerName(j)}</div>
+                  </td>
+                  <td>
+                    {empId ? (
+                      <button type="button" className="mgmt-link" onClick={() => navigate(`/employers/${empId}`)}>
+                        {getEmployerName(j)}
+                      </button>
+                    ) : (
+                      getEmployerName(j)
+                    )}
                   </td>
                   <td>{formatSalary(j)}</td>
+                  <td>{j.workType || '—'}</td>
                   <td><span className={`mgmt-badge ${jobStatusBadgeClass(j.status)}`}>{jobStatusLabel(j.status)}</span></td>
-                  <td>{j.workersRequired ?? '—'}</td>
-                  <td>{j.workersAssigned ?? 0}</td>
+                  <td>{j.workersRequired ?? '—'} / {j.workersAssigned ?? 0}</td>
                   <td>{formatPosted(j)}</td>
                   <td>
                     <div className="mgmt-actions-cell">
-                      <button type="button" className="mgmt-action-btn" onClick={() => navigate(`/jobs/${j._id}`)} title="View details" aria-label="View">
-                        <span aria-hidden>👁</span>
-                      </button>
-                      <button type="button" className="mgmt-action-btn" onClick={() => setEditJob(j)} title="Edit" aria-label="Edit">✎</button>
+                      <button type="button" className="mgmt-action-btn" onClick={() => navigate(`/jobs/${j._id}`)} title="View details">View</button>
+                      <button type="button" className="mgmt-action-btn" onClick={() => setEditJob(j)} title="Edit">Edit</button>
                       {isPending && (
                         <>
-                          <Button variant="primary" onClick={() => handleSetStatus(j._id, JOB_STATUS.APPROVED)} disabled={loadingThis} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>Approve</Button>
-                          <Button variant="danger" onClick={() => handleSetStatus(j._id, JOB_STATUS.REJECTED)} disabled={loadingThis} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>Reject</Button>
+                          <button type="button" className="mgmt-action-btn mgmt-action-btn-success" onClick={() => handleSetStatus(j._id, JOB_STATUS.APPROVED)} disabled={loadingThis}>Approve</button>
+                          <button type="button" className="mgmt-action-btn mgmt-action-btn-danger" onClick={() => handleSetStatus(j._id, JOB_STATUS.REJECTED)} disabled={loadingThis}>Reject</button>
                         </>
                       )}
-                      <button type="button" className="mgmt-action-btn mgmt-action-btn-danger" onClick={() => setDeleteJob(j)} title="Delete" aria-label="Delete">✕</button>
+                      <button type="button" className="mgmt-action-btn mgmt-action-btn-danger" onClick={() => setDeleteJob(j)} title="Delete">Delete</button>
                     </div>
                   </td>
                 </tr>
@@ -268,13 +299,13 @@ export default function Jobs() {
         </table>
       </DataTable>
 
-      {pagination.pages > 1 && (
-        <Pagination
-          currentPage={pagination.page}
-          totalPages={pagination.pages}
-          onPageChange={(p) => setPagination((prev) => ({ ...prev, page: p }))}
-        />
-      )}
+      <Pagination
+        page={pagination.page}
+        pages={pagination.pages}
+        total={pagination.total}
+        onPrevious={() => setPagination((p) => ({ ...p, page: Math.max(1, p.page - 1) }))}
+        onNext={() => setPagination((p) => ({ ...p, page: Math.min(p.pages || 1, p.page + 1) }))}
+      />
 
       {createOpen && (
         <JobForm
@@ -309,7 +340,7 @@ export default function Jobs() {
           message={`Are you sure you want to delete "${deleteJob.jobTitle || deleteJob._id}"?`}
           confirmLabel="Delete"
           onConfirm={handleDeleteConfirm}
-          onClose={() => setDeleteJob(null)}
+          onCancel={() => setDeleteJob(null)}
           loading={submitting}
           variant="danger"
         />

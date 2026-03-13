@@ -1,12 +1,115 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { jobsApi, skillsApi, workersApi, paymentApi } from '../services/api'
-import { jobStatusLabel, jobStatusBadgeClass, JOB_STATUS, CANCELLATION_REASON } from '../constants/jobEnums'
+import { jobStatusLabel, jobStatusBadgeClass, JOB_STATUS, CANCELLATION_REASON, SHIFT_SLOT_LABELS } from '../constants/jobEnums'
 import { getErrorMessage } from '../utils/format'
 import { PageHeader, Alert, Button } from '../components/ui'
 import JobForm from '../components/JobForm'
 import ConfirmModal from '../components/ConfirmModal'
 import '../styles/ManagementPage.css'
+import '../components/Modal.css'
+
+const CANCELLATION_REASON_LABELS = {
+  [CANCELLATION_REASON.NOT_FIT]: 'Not fit for job',
+  [CANCELLATION_REASON.CHANGED_PLAN]: 'Changed plan',
+  [CANCELLATION_REASON.DUPLICATE]: 'Duplicate',
+  [CANCELLATION_REASON.OTHER]: 'Other',
+}
+
+function AssignWorkerModal({ workers, workersLoading, selectedWorkerId, onSelectWorker, onSubmit, onCancel, assigning }) {
+  const [search, setSearch] = useState('')
+  const filtered = !search.trim()
+    ? workers
+    : workers.filter(
+        (w) =>
+          (w.fullName || '').toLowerCase().includes(search.toLowerCase()) ||
+          (w.phoneNumber || '').includes(search) ||
+          (w._id || '').toLowerCase().includes(search.toLowerCase())
+      )
+  return (
+    <div className="modal-backdrop" onClick={onCancel}>
+      <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
+        <div className="modal-header">
+          <h2 className="modal-title">Assign worker</h2>
+          <button type="button" className="modal-close" onClick={onCancel} aria-label="Close">&times;</button>
+        </div>
+        <div className="modal-body">
+          {workersLoading ? (
+            <p className="view-value" style={{ color: '#6b7280' }}>Loading workers…</p>
+          ) : (
+            <>
+              <label className="modal-label">
+                Search worker
+                <input
+                  type="search"
+                  placeholder="Name, phone, or ID..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="modal-input"
+                />
+              </label>
+              <label className="modal-label">
+                Select worker
+                <select
+                  value={selectedWorkerId}
+                  onChange={(e) => onSelectWorker(e.target.value)}
+                  className="mgmt-select modal-input"
+                  style={{ width: '100%' }}
+                >
+                  <option value="">Choose a worker</option>
+                  {filtered.map((w) => (
+                    <option key={w._id} value={w._id}>
+                      {w.fullName || w.phoneNumber || w._id}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {workers.length === 0 && <p className="view-value" style={{ color: '#6b7280', fontSize: '0.875rem' }}>No workers available or all are already assigned.</p>}
+            </>
+          )}
+          <div className="modal-actions" style={{ marginTop: '1rem' }}>
+            <button type="button" className="modal-btn secondary" onClick={onCancel} disabled={assigning}>Cancel</button>
+            <button type="button" className="modal-btn primary" onClick={onSubmit} disabled={!selectedWorkerId || assigning}>
+              {assigning ? 'Assigning…' : 'Assign'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CancelJobModal({ reason, note, onReasonChange, onNoteChange, onSubmit, onCancel, loading }) {
+  return (
+    <div className="modal-backdrop" onClick={onCancel}>
+      <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
+        <div className="modal-header">
+          <h2 className="modal-title">Cancel hired worker</h2>
+          <button type="button" className="modal-close" onClick={onCancel} aria-label="Close">&times;</button>
+        </div>
+        <div className="modal-body">
+          <p className="modal-message" style={{ marginBottom: '1rem' }}>Choose a reason and optionally add a note. The worker will be unassigned; service charge may apply.</p>
+          <label className="modal-label">
+            Reason
+            <select value={reason} onChange={(e) => onReasonChange(e.target.value)} className="mgmt-select modal-input" style={{ width: '100%' }}>
+              {Object.entries(CANCELLATION_REASON_LABELS).map(([val, label]) => (
+                <option key={val} value={val}>{label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="modal-label">
+            Note (optional)
+            <textarea value={note} onChange={(e) => onNoteChange(e.target.value)} className="modal-input" rows={3} placeholder="Additional details..." style={{ resize: 'vertical', width: '100%' }} />
+          </label>
+          <div className="modal-actions" style={{ marginTop: '1rem' }}>
+            <button type="button" className="modal-btn secondary" onClick={onCancel} disabled={loading}>Cancel</button>
+            <button type="button" className="modal-btn danger" onClick={onSubmit} disabled={loading}>{loading ? 'Submitting…' : 'Confirm cancel'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const RAZORPAY_SCRIPT_URL = 'https://checkout.razorpay.com/v1/checkout.js'
 
@@ -44,6 +147,12 @@ function formatPosted(createdAt) {
   if (diffHours < 24) return `${diffHours} hours ago`
   if (diffDays < 7) return `${diffDays} days ago`
   return d.toLocaleDateString()
+}
+
+function formatCurrency(val) {
+  if (val == null || val === '') return '—'
+  const n = Number(val)
+  return Number.isFinite(n) ? `₹${n.toLocaleString('en-IN')}` : '—'
 }
 
 export default function JobDetail() {
@@ -346,10 +455,17 @@ export default function JobDetail() {
   const isHired = job?.status === 'HIRED'
   const isInactiveUnpaid = job?.status === 'INACTIVE_PENDING_PAYMENT'
 
-  const salaryDisplay = job?.perDayPayout != null ? `₹${job.perDayPayout}/day` : job?.salaryOrPayout != null ? `₹${job.salaryOrPayout}` : '—'
+  const salaryDisplay = job?.perDayPayout != null
+    ? `₹${Number(job.perDayPayout).toLocaleString('en-IN')}/day`
+    : job?.salaryOrPayout != null
+      ? formatCurrency(job.salaryOrPayout)
+      : '—'
+
+  const loc = job?.location
+  const hasLocation = loc && (loc.address || loc.locality || loc.landmark || (Array.isArray(loc.coordinates) && loc.coordinates.length === 2))
 
   return (
-    <div className="mgmt-page">
+    <div className="mgmt-page job-detail-page">
       <PageHeader
         title="Job details"
         subtitle="View and manage this job posting"
@@ -393,84 +509,282 @@ export default function JobDetail() {
         <Button variant="danger" onClick={() => setDeleteOpen(true)}>Delete</Button>
       </div>
 
-      {/* Content cards */}
+      {/* Content cards – aligned label/value rows */}
       <div className="job-view-grid">
-        <section className="job-view-card">
+        <section className="job-view-card job-view-card-employer">
           <h3 className="view-section-title">Employer</h3>
-          <div className="view-row"><span className="view-label">Business / Company</span><span className="view-value">{employerName}</span></div>
-          {employer?.contactPersonName && <div className="view-row"><span className="view-label">Contact</span><span className="view-value">{employer.contactPersonName}</span></div>}
+          <div className="view-row">
+            <span className="view-label">Business / Company</span>
+            <span className="view-value">
+              {employer?._id ? (
+                <button type="button" className="mgmt-link" onClick={() => navigate(`/employers/${employer._id}`)}>
+                  {employerName}
+                </button>
+              ) : (
+                employerName || '—'
+              )}
+            </span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">Contact person</span>
+            <span className="view-value">{employer?.contactPersonName || '—'}</span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">Contact phone</span>
+            <span className="view-value">{employer?.contactPersonPhone || employer?.userId?.phone || '—'}</span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">Email</span>
+            <span className="view-value">{employer?.userId?.email || '—'}</span>
+          </div>
+          {employer?.companyName && (
+            <div className="view-row">
+              <span className="view-label">Company name</span>
+              <span className="view-value">{employer.companyName}</span>
+            </div>
+          )}
+          {employer?.gstNumber && (
+            <div className="view-row">
+              <span className="view-label">GST number</span>
+              <span className="view-value">{employer.gstNumber}</span>
+            </div>
+          )}
+          {Array.isArray(employer?.address) && employer.address[0] && (employer.address[0].addressText || employer.address[0].city) && (
+            <div className="view-row view-row-full">
+              <span className="view-label">Address</span>
+              <span className="view-value">
+                {[employer.address[0].addressText, employer.address[0].city, employer.address[0].state, employer.address[0].pincode].filter(Boolean).join(', ') || '—'}
+              </span>
+            </div>
+          )}
         </section>
 
         <section className="job-view-card">
-          <h3 className="view-section-title">Job details</h3>
-          <div className="view-row"><span className="view-label">Status</span><span className={`badge ${jobStatusBadgeClass(job?.status)}`}>{jobStatusLabel(job?.status)}</span></div>
-          <div className="view-row"><span className="view-label">Work type</span><span className="view-value">{job?.workType || '—'}</span></div>
-          <div className="view-row"><span className="view-label">Duration</span><span className="view-value">{job?.duration || '—'}</span></div>
+          <h3 className="view-section-title">Job overview</h3>
+          <div className="view-row">
+            <span className="view-label">Status</span>
+            <span className="view-value"><span className={`mgmt-badge ${jobStatusBadgeClass(job?.status)}`}>{jobStatusLabel(job?.status)}</span></span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">Work type</span>
+            <span className="view-value">{job?.workType || '—'}</span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">Duration</span>
+            <span className="view-value">{job?.duration || '—'}</span>
+          </div>
+          {(job?.applicationsCount != null && job.applicationsCount > 0) && (
+            <div className="view-row">
+              <span className="view-label">Applications</span>
+              <span className="view-value">{job.applicationsCount}</span>
+            </div>
+          )}
           {job?.jobDescription && (
-            <div className="view-row"><span className="view-label">Description</span><span className="view-value job-view-desc" style={{ whiteSpace: 'pre-wrap' }}>{job.jobDescription}</span></div>
+            <div className="view-row view-row-full">
+              <span className="view-label">Description</span>
+              <span className="view-value job-view-desc" style={{ whiteSpace: 'pre-wrap' }}>{job.jobDescription}</span>
+            </div>
           )}
         </section>
 
         <section className="job-view-card">
           <h3 className="view-section-title">Pay &amp; workers</h3>
-          <div className="view-row"><span className="view-label">Salary / payout</span><span className="view-value">{job?.salaryOrPayout ?? '—'}</span></div>
-          <div className="view-row"><span className="view-label">Per day payout (₹)</span><span className="view-value">{job?.perDayPayout ?? '—'}</span></div>
-          <div className="view-row"><span className="view-label">Payout type</span><span className="view-value">{job?.payoutType || '—'}</span></div>
-          <div className="view-row"><span className="view-label">Workers required</span><span className="view-value">{job?.workersRequired ?? '—'}</span></div>
-          <div className="view-row"><span className="view-label">Workers assigned</span><span className="view-value">{job?.workersAssigned ?? '—'}</span></div>
+          <div className="view-row">
+            <span className="view-label">Salary / payout</span>
+            <span className="view-value">{formatCurrency(job?.salaryOrPayout)}</span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">Per day payout</span>
+            <span className="view-value">{job?.perDayPayout != null ? formatCurrency(job.perDayPayout) + '/day' : '—'}</span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">Payout type</span>
+            <span className="view-value">{job?.payoutType || '—'}</span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">Daily hours</span>
+            <span className="view-value">{job?.dailyHours != null ? job.dailyHours : '—'}</span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">Workers required</span>
+            <span className="view-value">{job?.workersRequired ?? '—'}</span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">Workers assigned</span>
+            <span className="view-value">{job?.workersAssigned ?? '—'}</span>
+          </div>
         </section>
 
         <section className="job-view-card">
-          <h3 className="view-section-title">Requirements &amp; schedule</h3>
-          <div className="view-row"><span className="view-label">Skills</span><span className="view-value">{skillNames.length ? skillNames.join(', ') : '—'}</span></div>
-          <div className="view-row"><span className="view-label">Start date</span><span className="view-value">{formatDate(job?.startDate)}</span></div>
-          <div className="view-row"><span className="view-label">End date</span><span className="view-value">{formatDate(job?.endDate)}</span></div>
-          <div className="view-row"><span className="view-label">Work timings</span><span className="view-value">{job?.workTimings || '—'}</span></div>
-          <div className="view-row"><span className="view-label">Shift type</span><span className="view-value">{job?.shiftType || '—'}</span></div>
-          <div className="view-row"><span className="view-label">Urgent</span><span className="view-value">{job?.isUrgent ? 'Yes' : 'No'}</span></div>
+          <h3 className="view-section-title">Schedule &amp; timing</h3>
+          <div className="view-row">
+            <span className="view-label">Start date</span>
+            <span className="view-value">{formatDate(job?.startDate)}</span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">End date</span>
+            <span className="view-value">{formatDate(job?.endDate)}</span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">Work timings</span>
+            <span className="view-value">{job?.workTimings || '—'}</span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">Shift type</span>
+            <span className="view-value">{job?.shiftType || '—'}</span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">Shift slot</span>
+            <span className="view-value">{job?.shiftSlot ? (SHIFT_SLOT_LABELS[job.shiftSlot] || job.shiftSlot) : '—'}</span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">Reporting time</span>
+            <span className="view-value">{job?.reportingTime || '—'}</span>
+          </div>
         </section>
+
+        <section className="job-view-card">
+          <h3 className="view-section-title">Requirements</h3>
+          <div className="view-row">
+            <span className="view-label">Skills</span>
+            <span className="view-value">{skillNames.length ? skillNames.join(', ') : '—'}</span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">Gender preference</span>
+            <span className="view-value">{job?.genderPreference || '—'}</span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">Age range</span>
+            <span className="view-value">
+              {job?.minimumAge != null || job?.maximumAge != null
+                ? `${job?.minimumAge ?? '—'} – ${job?.maximumAge ?? '—'}`
+                : '—'}
+            </span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">Experience</span>
+            <span className="view-value">{job?.experienceRequired || '—'}</span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">Attendance required</span>
+            <span className="view-value">{job?.attendanceRequired ? 'Yes' : 'No'}</span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">Check-in method</span>
+            <span className="view-value">{job?.checkInMethod || '—'}</span>
+          </div>
+          <div className="view-row">
+            <span className="view-label">Urgent</span>
+            <span className="view-value">{job?.isUrgent ? 'Yes' : 'No'}</span>
+          </div>
+        </section>
+
+        {job?.status === JOB_STATUS.REJECTED && job?.rejectionReason && (
+          <section className="job-view-card job-view-card-full">
+            <h3 className="view-section-title">Rejection</h3>
+            <div className="view-row view-row-full">
+              <span className="view-label">Reason</span>
+              <span className="view-value">{job.rejectionReason}</span>
+            </div>
+          </section>
+        )}
+
+        {hasLocation && (
+          <section className="job-view-card job-view-card-full">
+            <h3 className="view-section-title">Location</h3>
+            {loc?.address && (
+              <div className="view-row">
+                <span className="view-label">Address</span>
+                <span className="view-value">{loc.address}</span>
+              </div>
+            )}
+            {loc?.locality && (
+              <div className="view-row">
+                <span className="view-label">Locality</span>
+                <span className="view-value">{loc.locality}</span>
+              </div>
+            )}
+            {loc?.landmark && (
+              <div className="view-row">
+                <span className="view-label">Landmark</span>
+                <span className="view-value">{loc.landmark}</span>
+              </div>
+            )}
+            {loc?.coordinates && loc.coordinates.length === 2 && (
+              <div className="view-row">
+                <span className="view-label">Coordinates</span>
+                <span className="view-value">{loc.coordinates[0]}, {loc.coordinates[1]} (lng, lat)</span>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Applicants (LIVE): workers who applied – admin can hire from here */}
         {isLive && employerId && (
-          <section className="job-view-card">
-            <h3 className="view-section-title">Applicants (job flow test)</h3>
-            <p className="view-row" style={{ marginBottom: '0.5rem' }}>
-              <span className="view-label">Workers who applied</span>
-              <Button variant="secondary" onClick={loadApplicants} disabled={applicantsLoading} style={{ marginLeft: '0.5rem' }}>
+          <section className="job-view-card job-view-card-full">
+            <h3 className="view-section-title">Applicants</h3>
+            <p className="view-detail-section-subtitle" style={{ marginTop: '-0.5rem' }}>
+              Workers who applied for this job. Load the list and hire or reject.
+            </p>
+            <div style={{ marginBottom: '0.75rem' }}>
+              <Button variant="secondary" onClick={loadApplicants} disabled={applicantsLoading}>
                 {applicantsLoading ? 'Loading…' : 'Load applicants'}
               </Button>
-            </p>
+            </div>
             {applicants.length === 0 && !applicantsLoading ? (
-              <p className="view-value" style={{ color: 'var(--text-muted)' }}>Click “Load applicants” or no one has applied yet.</p>
+              <p className="view-value" style={{ color: '#6b7280', fontSize: '0.9375rem' }}>No applicants yet, or click “Load applicants” to refresh.</p>
             ) : (
-              <ul className="mgmt-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {applicants.map((a) => {
-                  const w = a.worker || a.workerId
-                  const wid = w?._id || a.workerId
-                  const name = w?.fullName || w?.phoneNumber || wid
-                  const isHired = a.status === 'HIRED'
-                  return (
-                    <li key={a._id || wid} className="view-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                      <button type="button" className="mgmt-link" onClick={() => navigate(`/workers/${wid}`)}>
-                        {name}
-                      </button>
-                      <span className="view-value" style={{ fontSize: '0.875rem' }}>{w?.displayPhone || '—'}</span>
-                      {isHired ? (
-                        <span className="view-value" style={{ fontSize: '0.875rem', color: 'var(--success)' }}>Hired</span>
-                      ) : (
-                        <span style={{ display: 'flex', gap: '0.5rem' }}>
-                          <Button variant="primary" onClick={() => handleHire(wid)} disabled={hireLoading}>
-                            {hireLoading ? '…' : 'Hire'}
-                          </Button>
-                          <Button variant="danger" onClick={() => handleReject(wid)} disabled={rejectLoading}>
-                            {rejectLoading ? '…' : 'Reject'}
-                          </Button>
-                        </span>
-                      )}
-                    </li>
-                  )
-                })}
-              </ul>
+              <div className="job-detail-table-wrap">
+                <table className="mgmt-table">
+                  <thead>
+                    <tr>
+                      <th>Worker</th>
+                      <th>Contact</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {applicants.map((a) => {
+                      const w = a.worker || a.workerId
+                      const wid = w?._id || a.workerId
+                      const name = w?.fullName || w?.phoneNumber || wid
+                      const isHiredRow = a.status === 'HIRED'
+                      return (
+                        <tr key={a._id || wid}>
+                          <td>
+                            <button type="button" className="mgmt-link" onClick={() => navigate(`/workers/${wid}`)}>
+                              {name}
+                            </button>
+                          </td>
+                          <td>{w?.displayPhone || w?.phoneNumber || '—'}</td>
+                          <td>
+                            {isHiredRow ? (
+                              <span className="mgmt-badge badge-success">Hired</span>
+                            ) : (
+                              <span className="mgmt-badge badge-warning">Pending</span>
+                            )}
+                          </td>
+                          <td>
+                            {isHiredRow ? (
+                              '—'
+                            ) : (
+                              <div className="mgmt-actions-cell">
+                                <Button variant="primary" onClick={() => handleHire(wid)} disabled={hireLoading} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>
+                                  {hireLoading ? '…' : 'Hire'}
+                                </Button>
+                                <Button variant="danger" onClick={() => handleReject(wid)} disabled={rejectLoading} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>
+                                  {rejectLoading ? '…' : 'Reject'}
+                                </Button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </section>
         )}
@@ -521,73 +835,81 @@ export default function JobDetail() {
           </section>
         )}
 
-        <section className="job-view-card">
+        <section className="job-view-card job-view-card-full">
           <h3 className="view-section-title">Assigned workers</h3>
-          <p className="view-row" style={{ marginBottom: '0.5rem' }}>
-            <span className="view-label">Workers who got this job</span>
-            <Button variant="primary" onClick={handleAssignOpen} style={{ marginLeft: '0.5rem' }}>Assign worker</Button>
+          <p className="view-detail-section-subtitle" style={{ marginTop: '-0.5rem', marginBottom: '0.75rem' }}>
+            Workers assigned to this job. You can assign more or unassign.
           </p>
+          <div style={{ marginBottom: '0.75rem' }}>
+            <Button variant="primary" onClick={handleAssignOpen}>Assign worker</Button>
+          </div>
           {assignedWorkers.length === 0 ? (
-            <p className="view-value" style={{ color: 'var(--text-muted)' }}>No workers assigned yet.</p>
+            <p className="view-value" style={{ color: '#6b7280', fontSize: '0.9375rem' }}>No workers assigned yet.</p>
           ) : (
-            <ul className="mgmt-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {assignedWorkers.map((w) => {
-                const wid = w._id || w
-                const name = w.fullName || w.phoneNumber || wid
-                return (
-                  <li key={wid} className="view-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                    <button type="button" className="mgmt-link" onClick={() => navigate(`/workers/${wid}`)}>
-                      {name}
-                    </button>
-                    <span className="view-value" style={{ fontSize: '0.875rem' }}>{w.phoneNumber || '—'}</span>
-                    <Button variant="danger" onClick={() => handleUnassign(wid)} disabled={unassigningId === wid}>
-                      {unassigningId === wid ? '…' : 'Unassign'}
-                    </Button>
-                  </li>
-                )
-              })}
-            </ul>
+            <div className="job-detail-table-wrap">
+              <table className="mgmt-table">
+                <thead>
+                  <tr>
+                    <th>Worker</th>
+                    <th>Phone</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {assignedWorkers.map((w) => {
+                    const wid = w._id || w
+                    const name = w.fullName || w.phoneNumber || wid
+                    return (
+                      <tr key={wid}>
+                        <td>
+                          <button type="button" className="mgmt-link" onClick={() => navigate(`/workers/${wid}`)}>
+                            {name}
+                          </button>
+                        </td>
+                        <td>{w.phoneNumber || '—'}</td>
+                        <td>
+                          <Button variant="danger" onClick={() => handleUnassign(wid)} disabled={unassigningId === wid} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>
+                            {unassigningId === wid ? '…' : 'Unassign'}
+                          </Button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
 
-        {job?.location?.coordinates && (
-          <section className="job-view-card">
-            <h3 className="view-section-title">Location</h3>
-            <div className="view-row"><span className="view-label">Coordinates</span><span className="view-value">[{job.location.coordinates[0]}, {job.location.coordinates[1]}] (lng, lat)</span></div>
+        {(job?.cancellationReason || job?.cancellationNote) && (
+          <section className="job-view-card job-view-card-full">
+            <h3 className="view-section-title">Cancellation details</h3>
+            {job?.cancellationReason && (
+              <div className="view-row">
+                <span className="view-label">Reason</span>
+                <span className="view-value">{CANCELLATION_REASON_LABELS[job.cancellationReason] || job.cancellationReason}</span>
+              </div>
+            )}
+            {job?.cancellationNote && (
+              <div className="view-row view-row-full">
+                <span className="view-label">Note</span>
+                <span className="view-value">{job.cancellationNote}</span>
+              </div>
+            )}
           </section>
         )}
       </div>
 
       {assignOpen && (
-        <div className="modal-overlay" role="dialog" aria-modal="true">
-          <div className="modal-content" style={{ maxWidth: 420 }}>
-            <h3 className="view-section-title">Assign worker to this job</h3>
-            {workersLoading ? (
-              <p>Loading workers…</p>
-            ) : (
-              <>
-                <select
-                  value={selectedWorkerId}
-                  onChange={(e) => setSelectedWorkerId(e.target.value)}
-                  className="mgmt-select"
-                  style={{ width: '100%', marginBottom: '0.75rem' }}
-                >
-                  <option value="">Select a worker</option>
-                  {workersToShow.map((w) => (
-                    <option key={w._id} value={w._id}>{w.fullName || w.phoneNumber || w._id}</option>
-                  ))}
-                </select>
-                {workersToShow.length === 0 && <p className="view-value" style={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }}>All listed workers are already assigned or no workers found.</p>}
-              </>
-            )}
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
-              <Button variant="secondary" onClick={() => setAssignOpen(false)}>Cancel</Button>
-              <Button variant="primary" onClick={handleAssignSubmit} disabled={!selectedWorkerId || assigning}>
-                {assigning ? 'Assigning…' : 'Assign'}
-              </Button>
-            </div>
-          </div>
-        </div>
+        <AssignWorkerModal
+          workers={workersToShow}
+          workersLoading={workersLoading}
+          selectedWorkerId={selectedWorkerId}
+          onSelectWorker={setSelectedWorkerId}
+          onSubmit={handleAssignSubmit}
+          onCancel={() => setAssignOpen(false)}
+          assigning={assigning}
+        />
       )}
 
       {editOpen && (
@@ -610,9 +932,21 @@ export default function JobDetail() {
           message={`Are you sure you want to delete "${job?.jobTitle || jobId}"?`}
           confirmLabel="Delete"
           onConfirm={handleDeleteConfirm}
-          onClose={() => setDeleteOpen(false)}
+          onCancel={() => setDeleteOpen(false)}
           loading={submitting}
           variant="danger"
+        />
+      )}
+
+      {cancelOpen && (
+        <CancelJobModal
+          reason={cancelReason}
+          note={cancelNote}
+          onReasonChange={setCancelReason}
+          onNoteChange={setCancelNote}
+          onSubmit={handleCancelSubmit}
+          onCancel={() => { setCancelOpen(false); setCancelReason(CANCELLATION_REASON.OTHER); setCancelNote(''); }}
+          loading={cancelSubmitting}
         />
       )}
     </div>
