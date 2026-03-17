@@ -383,6 +383,7 @@ export default function EmployerDetail() {
         open={kycImageModalOpen}
         onClose={() => setKycImageModalOpen(false)}
         allImageItems={getAllKycImageItems(kyc)}
+        aadhaarNumber={(kyc?.aadhaarNumber || kyc?.aadhaarReference || '').trim()}
         onApprove={handleKycImageApprove}
         onReject={handleKycImageReject}
         loading={kycImageSubmitting}
