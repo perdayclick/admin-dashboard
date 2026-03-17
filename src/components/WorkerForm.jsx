@@ -110,6 +110,7 @@ export default function WorkerForm({ title, worker, onSubmit, onClose, error, su
             <label className="modal-label">
               Phone * {mode === 'edit' && <span className="modal-hint">(view only)</span>}
               <input type="tel" inputMode="numeric" pattern="[0-9]{10}" maxLength={10} value={phone} onChange={handlePhoneChange} placeholder="10 digits" required readOnly={mode === 'edit'} disabled={mode === 'edit'} className="modal-input" title="Exactly 10 digits" />
+              {mode === 'create' && <span className="modal-hint">Checked against existing users; if already registered, an error will appear on submit.</span>}
             </label>
             <label className="modal-label">
               Email (optional)
