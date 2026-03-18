@@ -11,13 +11,11 @@ export default function WorkerForm({ title, worker, onSubmit, onClose, error, su
   const [fullName, setFullName] = useState('')
   const [gender, setGender] = useState('')
   const [age, setAge] = useState('')
-  const [dob, setDob] = useState('')
-  const [whatsappNumber, setWhatsappNumber] = useState('')
   const [skills, setSkills] = useState('')
   const [experienceLevel, setExperienceLevel] = useState('')
-  const [dailyEarningExpectation, setDailyEarningExpectation] = useState('')
   const [availabilityStatus, setAvailabilityStatus] = useState('')
   const [workerLevel, setWorkerLevel] = useState('')
+  const [uniqueWorkerId, setUniqueWorkerId] = useState('')
   const [address, setAddress] = useState(emptyAddress)
 
   useEffect(() => {
@@ -28,13 +26,11 @@ export default function WorkerForm({ title, worker, onSubmit, onClose, error, su
       setFullName(worker.fullName || '')
       setGender(worker.gender || '')
       setAge(worker.age ?? '')
-      setDob(worker.dob ? (typeof worker.dob === 'string' ? worker.dob.slice(0, 10) : worker.dob.toISOString?.().slice(0, 10)) : '')
-      setWhatsappNumber(worker.whatsappNumber || '')
       setSkills(Array.isArray(worker.skills) ? worker.skills.join(', ') : '')
       setExperienceLevel(worker.experienceLevel || '')
-      setDailyEarningExpectation(worker.dailyEarningExpectation ?? '')
       setAvailabilityStatus(worker.availabilityStatus || '')
       setWorkerLevel(worker.workerLevel || '')
+      setUniqueWorkerId(worker.uniqueWorkerId || (worker._id ? 'W' + String(worker._id).slice(-8).toUpperCase() : ''))
       const addr = Array.isArray(worker.address) && worker.address[0] ? worker.address[0] : {}
       setAddress({
         addressText: addr.addressText || '',
@@ -51,9 +47,6 @@ export default function WorkerForm({ title, worker, onSubmit, onClose, error, su
   const handlePhoneChange = (e) => {
     setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))
   }
-  const handleWhatsAppChange = (e) => {
-    setWhatsappNumber(e.target.value.replace(/\D/g, '').slice(0, 10))
-  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -66,11 +59,8 @@ export default function WorkerForm({ title, worker, onSubmit, onClose, error, su
       fullName: fullName.trim() || undefined,
       gender: gender.trim() || undefined,
       age: age === '' ? undefined : Number(age),
-      dob: dob ? dob : undefined,
-      whatsappNumber: whatsappNumber.trim() || undefined,
       skills: skills.trim() ? skills.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
       experienceLevel: experienceLevel.trim() || undefined,
-      dailyEarningExpectation: dailyEarningExpectation === '' ? undefined : Number(dailyEarningExpectation),
       availabilityStatus: availabilityStatus || undefined,
       workerLevel: workerLevel || undefined,
       address: addressArray,
@@ -81,13 +71,11 @@ export default function WorkerForm({ title, worker, onSubmit, onClose, error, su
         fullName: payload.fullName || undefined,
         gender: payload.gender || undefined,
         age: payload.age,
-        dob: payload.dob,
-        whatsappNumber: payload.whatsappNumber || undefined,
         skills: payload.skills,
         experienceLevel: payload.experienceLevel || undefined,
-        dailyEarningExpectation: payload.dailyEarningExpectation,
         availabilityStatus: payload.availabilityStatus,
         workerLevel: payload.workerLevel,
+        uniqueWorkerId: (uniqueWorkerId && uniqueWorkerId.trim()) || undefined,
         address: payload.address,
       }
       onSubmit(updatePayload)
@@ -143,24 +131,12 @@ export default function WorkerForm({ title, worker, onSubmit, onClose, error, su
               <input type="number" min={1} max={120} value={age} onChange={(e) => setAge(e.target.value)} placeholder="Age" className="modal-input" />
             </label>
             <label className="modal-label">
-              Date of birth
-              <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className="modal-input" />
-            </label>
-            <label className="modal-label">
-              WhatsApp
-              <input type="tel" inputMode="numeric" maxLength={10} value={whatsappNumber} onChange={handleWhatsAppChange} placeholder="10 digits" className="modal-input" />
-            </label>
-            <label className="modal-label">
               Skills (comma-separated)
               <input type="text" value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="Plumbing, Carpentry" className="modal-input" />
             </label>
             <label className="modal-label">
               Experience level
               <input type="text" value={experienceLevel} onChange={(e) => setExperienceLevel(e.target.value)} placeholder="e.g. Entry" className="modal-input" />
-            </label>
-            <label className="modal-label">
-              Daily earning expectation (₹)
-              <input type="number" min={0} value={dailyEarningExpectation} onChange={(e) => setDailyEarningExpectation(e.target.value)} placeholder="500" className="modal-input" />
             </label>
             <label className="modal-label">
               Availability
@@ -178,6 +154,13 @@ export default function WorkerForm({ title, worker, onSubmit, onClose, error, su
                 ))}
               </select>
             </label>
+            {mode === 'edit' && (
+              <label className="modal-label">
+                Unique worker ID
+                <input type="text" value={uniqueWorkerId} onChange={(e) => setUniqueWorkerId(e.target.value)} placeholder="e.g. W12345678" className="modal-input" title="Primary/unique identifier for this worker" />
+                <span className="modal-hint">Primary identifier; auto-generated if left blank on create.</span>
+              </label>
+            )}
           </section>
           <section className="modal-section">
             <h3 className="modal-section-title">Address</h3>

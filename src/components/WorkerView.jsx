@@ -43,10 +43,6 @@ export default function WorkerView({ worker, onClose, onApproveKyc }) {
               <span className="view-value">{phone}</span>
             </div>
             <div className="view-row">
-              <span className="view-label">WhatsApp</span>
-              <span className="view-value">{worker?.whatsappNumber || '—'}</span>
-            </div>
-            <div className="view-row">
               <span className="view-label">Email</span>
               <span className="view-value">{email}</span>
             </div>
@@ -57,10 +53,6 @@ export default function WorkerView({ worker, onClose, onApproveKyc }) {
             <div className="view-row">
               <span className="view-label">Age</span>
               <span className="view-value">{worker?.age ?? '—'}</span>
-            </div>
-            <div className="view-row">
-              <span className="view-label">Date of birth</span>
-              <span className="view-value">{formatDate(worker?.dob)}</span>
             </div>
             <p className="view-detail-section-subtitle">Profile</p>
             <div className="view-row">
@@ -103,10 +95,6 @@ export default function WorkerView({ worker, onClose, onApproveKyc }) {
             <div className="view-row">
               <span className="view-label">Experience level</span>
               <span className="view-value">{worker?.experienceLevel || '—'}</span>
-            </div>
-            <div className="view-row">
-              <span className="view-label">Daily earning expectation (₹)</span>
-              <span className="view-value">{worker?.dailyEarningExpectation ?? '—'}</span>
             </div>
           </section>
           <section className="view-section">

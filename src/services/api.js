@@ -22,6 +22,8 @@ export async function apiRequest(endpoint, options = {}) {
     localStorage.removeItem('admin_refresh_token')
     localStorage.removeItem('admin_user')
     window.dispatchEvent(new Event('auth:logout'))
+    // Immediate redirect to login so admin is not left on a protected page
+    window.location.replace('/login')
     const err = new Error('Session expired')
     err.status = 401
     throw err
@@ -29,10 +31,12 @@ export async function apiRequest(endpoint, options = {}) {
   if (!res.ok) {
     const err = new Error(res.statusText || 'Request failed')
     err.status = res.status
+    // Read body once: json() consumes the stream — calling text() after a failed json() throws.
+    const text = await res.text()
     try {
-      err.body = await res.json()
+      err.body = text ? JSON.parse(text) : null
     } catch {
-      err.body = await res.text()
+      err.body = text
     }
     throw err
   }
@@ -104,6 +108,9 @@ export const workersApi = {
     apiRequest(`/api/worker/workers/${workerId}`, { method: 'PUT', body: JSON.stringify(body) }),
   delete: (workerId) =>
     apiRequest(`/api/worker/workers/${workerId}`, { method: 'DELETE' }),
+  /** Admin: applications + job summary for worker detail */
+  jobApplications: (workerId) =>
+    apiRequest(`/api/admin/workers/${workerId}/job-applications`),
 }
 
 // Employers (admin uses /api/employer/employers with admin token)
@@ -137,6 +144,16 @@ export const jobsApi = {
     if (params.search) sp.set('search', params.search)
     const q = sp.toString()
     return apiRequest(`/api/job${q ? `?${q}` : ''}`)
+  },
+  /** Jobs for one employer (admin). Prefer over list({ employerId }) for employer detail pages. */
+  listByEmployer: (employerId, params = {}) => {
+    const sp = new URLSearchParams()
+    if (params.page) sp.set('page', params.page)
+    if (params.limit) sp.set('limit', params.limit)
+    if (params.status) sp.set('status', params.status)
+    if (params.workType) sp.set('workType', params.workType)
+    const q = sp.toString()
+    return apiRequest(`/api/job/employer/${encodeURIComponent(employerId)}${q ? `?${q}` : ''}`)
   },
   get: (jobId) => apiRequest(`/api/job/${jobId}`),
   create: (body) =>

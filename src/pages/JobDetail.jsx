@@ -442,7 +442,7 @@ export default function JobDetail() {
   if (error && !job) return <div className="mgmt-page"><Alert variant="error">{error}</Alert><Button onClick={() => navigate('/jobs')}>Back to Jobs</Button></div>
 
   const employer = job?.employerId || job?.employer
-  const employerName = employer?.businessName || employer?.companyName || employer?.contactPersonName || '—'
+  const employerName = employer?.fullName || '—'
   const skillsList = job?.skillsRequired || job?.skills || []
   const skillNames = Array.isArray(skillsList) ? skillsList.map((s) => s?.name || s?._id) : []
 
@@ -478,10 +478,10 @@ export default function JobDetail() {
       {/* Hero: title + status + posted */}
       <div className="job-view-hero">
         <div className="job-view-hero-main">
-          <h2 className="job-view-title">{job?.jobTitle || '—'}</h2>
+          <h2 className="job-view-title">{job?.jobTitle.toUpperCase() || '—'}</h2>
           <span className={`mgmt-badge ${jobStatusBadgeClass(job?.status)}`}>{jobStatusLabel(job?.status)}</span>
         </div>
-        <p className="job-view-posted">Posted {formatPosted(job?.createdAt)} · by {employerName}</p>
+        <p className="job-view-posted">Posted {formatPosted(job?.createdAt)} - By {employerName}</p>
       </div>
 
       {/* Key stats row */}
@@ -509,55 +509,88 @@ export default function JobDetail() {
         <Button variant="danger" onClick={() => setDeleteOpen(true)}>Delete</Button>
       </div>
 
-      {/* Content cards – aligned label/value rows */}
-      <div className="job-view-grid">
-        <section className="job-view-card job-view-card-employer">
-          <h3 className="view-section-title">Employer</h3>
-          <div className="view-row">
-            <span className="view-label">Business / Company</span>
-            <span className="view-value">
-              {employer?._id ? (
-                <button type="button" className="mgmt-link" onClick={() => navigate(`/employers/${employer._id}`)}>
-                  {employerName}
-                </button>
-              ) : (
-                employerName || '—'
-              )}
-            </span>
-          </div>
-          <div className="view-row">
-            <span className="view-label">Contact person</span>
-            <span className="view-value">{employer?.contactPersonName || '—'}</span>
-          </div>
-          <div className="view-row">
-            <span className="view-label">Contact phone</span>
-            <span className="view-value">{employer?.contactPersonPhone || employer?.userId?.phone || '—'}</span>
-          </div>
-          <div className="view-row">
-            <span className="view-label">Email</span>
-            <span className="view-value">{employer?.userId?.email || '—'}</span>
-          </div>
-          {employer?.companyName && (
-            <div className="view-row">
-              <span className="view-label">Company name</span>
-              <span className="view-value">{employer.companyName}</span>
+      {/* Content: Requirements (compact) → Location → Overview → Pay & workers → Timing → … → Employer last */}
+      <div className="job-view-grid detail-view">
+        {/* Requirements – compact: skills as tags + all requirement meta as pills */}
+        <section className="job-view-card job-view-card-full job-requirements-compact">
+          <h3 className="view-section-title">Requirements</h3>
+          {skillNames.length > 0 && (
+            <div className="job-req-skills">
+              <span className="job-req-meta-label">Skills</span>
+              <div className="view-tags">
+                {skillNames.map((name, i) => (
+                  <span key={i} className="view-tag">{name}</span>
+                ))}
+              </div>
             </div>
           )}
-          {employer?.gstNumber && (
-            <div className="view-row">
-              <span className="view-label">GST number</span>
-              <span className="view-value">{employer.gstNumber}</span>
-            </div>
-          )}
-          {Array.isArray(employer?.address) && employer.address[0] && (employer.address[0].addressText || employer.address[0].city) && (
-            <div className="view-row view-row-full">
-              <span className="view-label">Address</span>
-              <span className="view-value">
-                {[employer.address[0].addressText, employer.address[0].city, employer.address[0].state, employer.address[0].pincode].filter(Boolean).join(', ') || '—'}
-              </span>
-            </div>
+          <div className="job-req-meta">
+            {(job?.genderPreference || job?.experienceRequired || (job?.minimumAge != null || job?.maximumAge != null)) && (
+              <div className="job-req-meta-row">
+                {job?.genderPreference && <span className="job-req-pill">Gender: {job.genderPreference}</span>}
+                {(job?.minimumAge != null || job?.maximumAge != null) && (
+                  <span className="job-req-pill">Age: {job?.minimumAge ?? '—'} – {job?.maximumAge ?? '—'}</span>
+                )}
+                {job?.experienceRequired && <span className="job-req-pill">Exp: {job.experienceRequired}</span>}
+              </div>
+            )}
+            {(job?.duration || job?.workersRequired != null || job?.dailyHours != null) && (
+              <div className="job-req-meta-row">
+                {job?.duration && <span className="job-req-pill">Duration: {job.duration}</span>}
+                {job?.workersRequired != null && <span className="job-req-pill">Workers: {job.workersRequired}</span>}
+                {job?.dailyHours != null && <span className="job-req-pill">Daily hours: {job.dailyHours}</span>}
+              </div>
+            )}
+            {(job?.shiftType || job?.shiftSlot || job?.reportingTime || job?.workTimings) && (
+              <div className="job-req-meta-row">
+                {job?.shiftType && <span className="job-req-pill">Shift: {job.shiftType}</span>}
+                {job?.shiftSlot && <span className="job-req-pill">{SHIFT_SLOT_LABELS[job.shiftSlot] || job.shiftSlot}</span>}
+                {job?.reportingTime && <span className="job-req-pill">Report: {job.reportingTime}</span>}
+                {job?.workTimings && <span className="job-req-pill">Timings: {job.workTimings}</span>}
+              </div>
+            )}
+            {(job?.checkInMethod || job?.attendanceRequired != null || job?.isUrgent) && (
+              <div className="job-req-meta-row">
+                {job?.checkInMethod && <span className="job-req-pill">Check-in: {job.checkInMethod}</span>}
+                {job?.attendanceRequired != null && <span className="job-req-pill">Attendance: {job.attendanceRequired ? 'Yes' : 'No'}</span>}
+                {job?.isUrgent && <span className="job-req-pill job-req-pill-urgent">Urgent</span>}
+              </div>
+            )}
+          </div>
+          {!skillNames.length && !job?.genderPreference && !job?.experienceRequired && job?.minimumAge == null && job?.maximumAge == null && !job?.duration && job?.workersRequired == null && job?.dailyHours == null && !job?.shiftType && !job?.shiftSlot && !job?.reportingTime && !job?.workTimings && !job?.checkInMethod && job?.attendanceRequired == null && !job?.isUrgent && (
+            <p className="view-value" style={{ color: '#6b7280', fontSize: '0.9375rem' }}>No requirements specified.</p>
           )}
         </section>
+
+        {hasLocation && (
+          <section className="job-view-card job-view-card-full">
+            <h3 className="view-section-title">Location</h3>
+            {loc?.address && (
+              <div className="view-row">
+                <span className="view-label">Address</span>
+                <span className="view-value">{loc.address}</span>
+              </div>
+            )}
+            {loc?.locality && (
+              <div className="view-row">
+                <span className="view-label">Locality</span>
+                <span className="view-value">{loc.locality}</span>
+              </div>
+            )}
+            {loc?.landmark && (
+              <div className="view-row">
+                <span className="view-label">Landmark</span>
+                <span className="view-value">{loc.landmark}</span>
+              </div>
+            )}
+            {loc?.coordinates && loc.coordinates.length === 2 && (
+              <div className="view-row">
+                <span className="view-label">Coordinates</span>
+                <span className="view-value">{loc.coordinates[0]}, {loc.coordinates[1]} (lng, lat)</span>
+              </div>
+            )}
+          </section>
+        )}
 
         <section className="job-view-card">
           <h3 className="view-section-title">Job overview</h3>
@@ -643,42 +676,6 @@ export default function JobDetail() {
           </div>
         </section>
 
-        <section className="job-view-card">
-          <h3 className="view-section-title">Requirements</h3>
-          <div className="view-row">
-            <span className="view-label">Skills</span>
-            <span className="view-value">{skillNames.length ? skillNames.join(', ') : '—'}</span>
-          </div>
-          <div className="view-row">
-            <span className="view-label">Gender preference</span>
-            <span className="view-value">{job?.genderPreference || '—'}</span>
-          </div>
-          <div className="view-row">
-            <span className="view-label">Age range</span>
-            <span className="view-value">
-              {job?.minimumAge != null || job?.maximumAge != null
-                ? `${job?.minimumAge ?? '—'} – ${job?.maximumAge ?? '—'}`
-                : '—'}
-            </span>
-          </div>
-          <div className="view-row">
-            <span className="view-label">Experience</span>
-            <span className="view-value">{job?.experienceRequired || '—'}</span>
-          </div>
-          <div className="view-row">
-            <span className="view-label">Attendance required</span>
-            <span className="view-value">{job?.attendanceRequired ? 'Yes' : 'No'}</span>
-          </div>
-          <div className="view-row">
-            <span className="view-label">Check-in method</span>
-            <span className="view-value">{job?.checkInMethod || '—'}</span>
-          </div>
-          <div className="view-row">
-            <span className="view-label">Urgent</span>
-            <span className="view-value">{job?.isUrgent ? 'Yes' : 'No'}</span>
-          </div>
-        </section>
-
         {job?.status === JOB_STATUS.REJECTED && job?.rejectionReason && (
           <section className="job-view-card job-view-card-full">
             <h3 className="view-section-title">Rejection</h3>
@@ -686,36 +683,6 @@ export default function JobDetail() {
               <span className="view-label">Reason</span>
               <span className="view-value">{job.rejectionReason}</span>
             </div>
-          </section>
-        )}
-
-        {hasLocation && (
-          <section className="job-view-card job-view-card-full">
-            <h3 className="view-section-title">Location</h3>
-            {loc?.address && (
-              <div className="view-row">
-                <span className="view-label">Address</span>
-                <span className="view-value">{loc.address}</span>
-              </div>
-            )}
-            {loc?.locality && (
-              <div className="view-row">
-                <span className="view-label">Locality</span>
-                <span className="view-value">{loc.locality}</span>
-              </div>
-            )}
-            {loc?.landmark && (
-              <div className="view-row">
-                <span className="view-label">Landmark</span>
-                <span className="view-value">{loc.landmark}</span>
-              </div>
-            )}
-            {loc?.coordinates && loc.coordinates.length === 2 && (
-              <div className="view-row">
-                <span className="view-label">Coordinates</span>
-                <span className="view-value">{loc.coordinates[0]}, {loc.coordinates[1]} (lng, lat)</span>
-              </div>
-            )}
           </section>
         )}
 
@@ -898,6 +865,29 @@ export default function JobDetail() {
             )}
           </section>
         )}
+
+        {/* Employer – last, name + phone only */}
+        <section className="job-view-card job-view-card-employer job-view-card-employer-last">
+          <h3 className="view-section-title">Employer</h3>
+          <div className="job-employer-contact">
+            <div className="view-row">
+              <span className="view-label">Name</span>
+              <span className="view-value">
+                {employer?._id ? (
+                  <button type="button" className="mgmt-link" onClick={() => navigate(`/employers/${employer._id}`)}>
+                    {employerName}
+                  </button>
+                ) : (
+                  employerName || '—'
+                )}
+              </span>
+            </div>
+            <div className="view-row">
+              <span className="view-label">Phone</span>
+              <span className="view-value">{employer?.userId?.phone || employer?.phone || '—'}</span>
+            </div>
+          </div>
+        </section>
       </div>
 
       {assignOpen && (
