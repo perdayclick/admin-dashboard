@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 
 const STORAGE_KEYS = {
   ACCESS_TOKEN: 'admin_access_token',
@@ -20,6 +20,23 @@ export function AuthProvider({ children }) {
   const [accessToken, setAccessToken] = useState(() => localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN))
   const [refreshToken, setRefreshToken] = useState(() => localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN))
 
+  const logout = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN)
+    localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN)
+    localStorage.removeItem(STORAGE_KEYS.USER)
+    setAccessToken(null)
+    setRefreshToken(null)
+    setUser(null)
+  }, [])
+
+  // When token is expired (401), api.js dispatches 'auth:logout' and redirects.
+  // Sync auth state immediately so UI doesn't show authenticated state.
+  useEffect(() => {
+    const handleAuthLogout = () => { logout() }
+    window.addEventListener('auth:logout', handleAuthLogout)
+    return () => window.removeEventListener('auth:logout', handleAuthLogout)
+  }, [logout])
+
   const setAuth = useCallback((data) => {
     if (data?.accessToken) {
       localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.accessToken)
@@ -33,15 +50,6 @@ export function AuthProvider({ children }) {
       localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(data.user))
       setUser(data.user)
     }
-  }, [])
-
-  const logout = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN)
-    localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN)
-    localStorage.removeItem(STORAGE_KEYS.USER)
-    setAccessToken(null)
-    setRefreshToken(null)
-    setUser(null)
   }, [])
 
   const getToken = useCallback(() => accessToken, [accessToken])

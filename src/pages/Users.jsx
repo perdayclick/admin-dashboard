@@ -15,8 +15,8 @@ import {
 } from '../components/ui'
 import UserForm from '../components/UserForm'
 import UserView from '../components/UserView'
-import ConfirmModal from '../components/ConfirmModal'
 import InactiveDateModal from '../components/InactiveDateModal'
+import BlockMessageModal from '../components/BlockMessageModal'
 import '../styles/ManagementPage.css'
 
 function getRoleName(user) {
@@ -43,6 +43,7 @@ export default function Users() {
   const [editUser, setEditUser] = useState(null)
   const [viewUser, setViewUser] = useState(null)
   const [blockUser, setBlockUser] = useState(null)
+  const [blockError, setBlockError] = useState('')
   const [inactiveModalUser, setInactiveModalUser] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
@@ -121,15 +122,20 @@ export default function Users() {
     }
   }
 
-  const handleBlockConfirm = async () => {
+  const handleBlockConfirm = async (payload) => {
     if (!blockUser) return
     setSubmitting(true)
+    setBlockError('')
     try {
-      await usersApi.update(blockUser._id, { isBlocked: true })
+      await usersApi.update(blockUser._id, {
+        isBlocked: true,
+        inactiveMessage: payload?.blockMessage ?? '',
+      })
       setBlockUser(null)
+      setBlockError('')
       fetchUsers(pagination.page)
     } catch (err) {
-      setError(getErrorMessage(err, 'Block failed'))
+      setBlockError(getErrorMessage(err, 'Block failed'))
     } finally {
       setSubmitting(false)
     }
@@ -154,7 +160,7 @@ export default function Users() {
       // Send ISO 8601 strings so backend validation accepts them (input type="date" gives YYYY-MM-DD only)
       const inactiveFrom = payload.inactiveFrom ? new Date(payload.inactiveFrom).toISOString() : null
       const inactiveTo = payload.inactiveTo ? new Date(payload.inactiveTo).toISOString() : null
-      await usersApi.update(userId, { isActive: false, inactiveFrom, inactiveTo })
+      await usersApi.update(userId, { isActive: false, inactiveFrom, inactiveTo, inactiveMessage: payload.inactiveMessage || '' })
       setInactiveModalUser(null)
       fetchUsers(pagination.page)
     } catch (err) {
@@ -168,7 +174,7 @@ export default function Users() {
     setFormError('')
     setSubmitting(true)
     try {
-      await usersApi.update(user._id, { isActive: true, inactiveFrom: null, inactiveTo: null })
+      await usersApi.update(user._id, { isActive: true, inactiveFrom: null, inactiveTo: null, inactiveMessage: '' })
       fetchUsers(pagination.page)
     } catch (err) {
       setError(getErrorMessage(err, 'Set active failed'))
@@ -193,14 +199,7 @@ export default function Users() {
         title="User Management"
         subtitle="Manage and monitor platform users"
         primaryAction={<Button variant="primary" onClick={() => setCreateOpen(true)}>Add User</Button>}
-        secondaryAction={
-          <>
-            <Button variant="secondary" onClick={() => fetchUsers(pagination.page)} disabled={loading} title="Refresh list">
-              {loading ? 'Refreshing…' : 'Refresh'}
-            </Button>
-            <Button disabled>Export</Button>
-          </>
-        }
+        secondaryAction={<Button disabled>Export</Button>}
       />
 
       <div className="mgmt-cards">
@@ -228,6 +227,8 @@ export default function Users() {
         filterOptions={roleOptions}
         filterValue={roleFilter}
         onFilterChange={(v) => { setRoleFilter(v); setPagination((p) => ({ ...p, page: 1 })); }}
+        onRefresh={() => fetchUsers(pagination.page)}
+        refreshing={loading}
         extraButton={<Button onClick={() => fetchUsers(1)}>More Filters</Button>}
       />
 
@@ -293,7 +294,7 @@ export default function Users() {
                         <TableActionButtons
                           onView={() => setViewUser(user)}
                           onEdit={() => setEditUser(user)}
-                          onBlock={!user.isBlocked ? () => setBlockUser(user) : undefined}
+                          onBlock={!user.isBlocked ? () => { setBlockError(''); setBlockUser(user) } : undefined}
                           onUnblock={user.isBlocked ? () => handleUnblock(user) : undefined}
                         />
                       </td>
@@ -310,6 +311,7 @@ export default function Users() {
         page={pagination.page}
         pages={pagination.pages}
         total={pagination.total}
+        limit={pagination.limit}
         onPrevious={() => setPagination((p) => ({ ...p, page: p.page - 1 }))}
         onNext={() => setPagination((p) => ({ ...p, page: p.page + 1 }))}
       />
@@ -339,14 +341,13 @@ export default function Users() {
       )}
       {viewUser && <UserView user={viewUser} onClose={() => setViewUser(null)} />}
       {blockUser && (
-        <ConfirmModal
-          title="Block User"
-          message={`Block this user? They will be able to login with phone and OTP but cannot perform any actions. They will see: "You have been blocked due to some reason." (${blockUser.email || blockUser.phone || blockUser._id})`}
-          confirmLabel="Block"
-          onConfirm={handleBlockConfirm}
-          onCancel={() => setBlockUser(null)}
-          loading={submitting}
-          variant="danger"
+        <BlockMessageModal
+          title="Block user"
+          entityLabel={blockUser.email || blockUser.phone || String(blockUser._id)}
+          onSubmit={handleBlockConfirm}
+          onCancel={() => { setBlockUser(null); setBlockError(''); }}
+          submitting={submitting}
+          error={blockError}
         />
       )}
       {inactiveModalUser && (

@@ -145,7 +145,7 @@ export default function Jobs() {
   const getEmployerName = (job) => {
     const emp = job.employerId || job.employer
     if (!emp) return '—'
-    return emp.businessName || emp.companyName || emp.contactPersonName || 'Employer'
+    return emp.businessName || emp.companyName || emp.fullName || 'Employer'
   }
 
   const formatSalary = (j) => {
@@ -175,7 +175,7 @@ export default function Jobs() {
 
   const statusOptions = JOB_STATUS_OPTIONS
   const workTypeOptions = [{ value: '', label: 'All work types' }, ...WORK_TYPE_OPTIONS.filter((o) => o.value)]
-  const employerOptions = [{ value: '', label: 'All employers' }, ...employers.map((e) => ({ value: e._id, label: e.businessName || e.companyName || e.contactPersonName || e._id }))]
+  const employerOptions = [{ value: '', label: 'All employers' }, ...employers.map((e) => ({ value: e._id, label: e.businessName || e.companyName || e.fullName || e._id }))]
 
   return (
     <div className="mgmt-page">
@@ -183,11 +183,6 @@ export default function Jobs() {
         title="Jobs & Tasks Control"
         subtitle="Review, approve, and monitor all job postings."
         primaryAction={<Button variant="primary" onClick={() => setCreateOpen(true)}>Create Job</Button>}
-        secondaryAction={
-          <Button variant="secondary" onClick={() => fetchJobs(pagination.page)} disabled={loading} title="Refresh list">
-            {loading ? 'Refreshing…' : 'Refresh'}
-          </Button>
-        }
       />
 
       <div className="mgmt-cards">
@@ -206,6 +201,8 @@ export default function Jobs() {
         filterValue={statusFilter}
         onFilterChange={(v) => { setStatusFilter(v); setPagination((p) => ({ ...p, page: 1 })); }}
         filterLabel="Status"
+        onRefresh={() => fetchJobs(pagination.page)}
+        refreshing={loading}
         extraButton={
           <>
             <select
@@ -303,6 +300,7 @@ export default function Jobs() {
         page={pagination.page}
         pages={pagination.pages}
         total={pagination.total}
+        limit={pagination.limit}
         onPrevious={() => setPagination((p) => ({ ...p, page: Math.max(1, p.page - 1) }))}
         onNext={() => setPagination((p) => ({ ...p, page: Math.min(p.pages || 1, p.page + 1) }))}
       />

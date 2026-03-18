@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { employersApi } from '../services/api'
+import { employersApi, jobsApi } from '../services/api'
+import { jobStatusLabel, jobCompletedSummary } from '../utils/jobStatusLabels'
 import { kycLabel, kycImageVerificationLabel, getKycImageVerificationBadgeClass, getErrorMessage } from '../utils/format'
 import { hasAnyKycImages, getAllKycImageItems } from '../utils/kycImages'
 import { PageHeader, Alert, Button } from '../components/ui'
@@ -22,6 +23,10 @@ export default function EmployerDetail() {
   const [error, setError] = useState('')
   const [kycImageModalOpen, setKycImageModalOpen] = useState(false)
   const [kycImageSubmitting, setKycImageSubmitting] = useState(false)
+  const [postedJobs, setPostedJobs] = useState([])
+  const [postedJobsLoading, setPostedJobsLoading] = useState(false)
+  const [postedJobsTotal, setPostedJobsTotal] = useState(0)
+  const [postedJobsError, setPostedJobsError] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -36,6 +41,37 @@ export default function EmployerDetail() {
         if (!cancelled) setLoading(false)
       })
     return () => { cancelled = true }
+  }, [employerId])
+
+  useEffect(() => {
+    if (!employerId) return
+    let cancelled = false
+    setPostedJobsLoading(true)
+    setPostedJobsError('')
+    jobsApi
+      .listByEmployer(employerId, { limit: 100, page: 1 })
+      .then((res) => {
+        if (cancelled) return
+        const d = res.data || res
+        const jobs = Array.isArray(d.jobs) ? d.jobs : []
+        setPostedJobs(jobs)
+        setPostedJobsTotal(d.pagination?.total ?? jobs.length)
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setPostedJobs([])
+          setPostedJobsTotal(0)
+          setPostedJobsError(
+            getErrorMessage(err, 'Could not load jobs for this employer.'),
+          )
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setPostedJobsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [employerId])
 
   /** Modal Approve: sets both kycImageVerification and kycStatus to approved. */
@@ -86,14 +122,15 @@ export default function EmployerDetail() {
   }
 
   const u = employer?.userId || employer?.user
-  const phone = u?.phone ?? employer?.contactPersonPhone ?? employer?.phone ?? '—'
+  const phone = u?.phone ?? employer?.phone ?? '—'
   const email = u?.email ?? employer?.email ?? '—'
   const kyc = employer?.kyc
   const addr = Array.isArray(employer?.address) && employer.address[0] ? employer.address[0] : null
   const wallet = employer?.wallet
-  const displayName = employer?.businessName || employer?.companyName || employer?.contactPersonName || employer?.fullName || 'Employer'
+  const displayName = employer?.businessName || employer?.companyName || employer?.fullName || 'Employer'
   const isLocked = employer?.isLocked === true
   const serviceChargeDue = employer?.serviceChargeDue ?? 0
+  const displayUniqueEmployerId = employer?.uniqueEmployerId || (employer?._id ? 'E' + String(employer._id).slice(-8).toUpperCase() : '—')
 
   return (
     <div className="mgmt-page job-detail-page">
@@ -112,19 +149,20 @@ export default function EmployerDetail() {
           {employer?.isVerified && <span className="mgmt-badge badge-success">Verified</span>}
           {isLocked && <span className="mgmt-badge badge-warning">Locked (unpaid service charge)</span>}
         </div>
-        {(employer?.contactPersonName || phone !== '—') && (
+        {(phone !== '—' || displayUniqueEmployerId !== '—') && (
           <p className="job-view-posted">
-            {employer?.contactPersonName && <span>Contact: {employer.contactPersonName}</span>}
-            {employer?.contactPersonName && phone !== '—' && ' · '}
             {phone !== '—' && <span>{phone}</span>}
+            {displayUniqueEmployerId !== '—' && <span>{phone !== '—' ? ' · ' : ''}ID: {displayUniqueEmployerId}</span>}
           </p>
         )}
       </div>
 
       <div className="job-view-stats">
         <div className="job-view-stat">
-          <span className="job-view-stat-value">{employer?.totalJobsPosted ?? 0}</span>
-          <span className="job-view-stat-label">Jobs posted</span>
+          <span className="job-view-stat-value">
+            {postedJobsLoading ? '…' : postedJobsError ? '—' : postedJobsTotal}
+          </span>
+          <span className="job-view-stat-label">Active job listings</span>
         </div>
         <div className="job-view-stat">
           <span className="job-view-stat-value">{employer?.profileCompletionPercent ?? 0}%</span>
@@ -292,7 +330,7 @@ export default function EmployerDetail() {
           <div className="view-row"><span className="view-label">Full name</span><span className="view-value">{employer?.fullName || '—'}</span></div>
           <div className="view-row"><span className="view-label">Phone</span><span className="view-value">{phone}</span></div>
           <div className="view-row"><span className="view-label">Email</span><span className="view-value">{email}</span></div>
-          <div className="view-row"><span className="view-label">Contact person</span><span className="view-value">{employer?.contactPersonName || '—'}</span></div>
+          <div className="view-row"><span className="view-label">Unique employer ID</span><span className="view-value">{displayUniqueEmployerId}</span></div>
           <div className="view-row"><span className="view-label">Gender</span><span className="view-value">{employer?.gender || '—'}</span></div>
           <div className="view-row"><span className="view-label">Date of birth</span><span className="view-value">{formatDate(employer?.dob)}</span></div>
           <p className="view-detail-section-subtitle">Business</p>
@@ -305,24 +343,6 @@ export default function EmployerDetail() {
           <div className="view-row"><span className="view-label">Rating average</span><span className="view-value">{employer?.ratingAverage ?? '—'}</span></div>
           <div className="view-row"><span className="view-label">Total jobs posted</span><span className="view-value">{employer?.totalJobsPosted ?? '—'}</span></div>
           <div className="view-row"><span className="view-label">Verified</span><span className="view-value">{employer?.isVerified ? 'Yes' : 'No'}</span></div>
-        </section>
-
-        <section className="job-view-card">
-          <h3 className="view-section-title">Job categories</h3>
-          <div className="view-row view-row-full">
-            <span className="view-label">Categories</span>
-            <span className="view-value">
-              {Array.isArray(employer?.jobCategories) && employer.jobCategories.length > 0 ? (
-                <div className="view-tags">
-                  {employer.jobCategories.map((cat, i) => (
-                    <span key={i} className="view-tag">{cat}</span>
-                  ))}
-                </div>
-              ) : (
-                '—'
-              )}
-            </span>
-          </div>
         </section>
 
         <section className="job-view-card">
@@ -377,6 +397,60 @@ export default function EmployerDetail() {
             </div>
           </section>
         )}
+
+        <section className="job-view-card detail-page-jobs-section employer-detail-jobs-bottom">
+          <h3 className="view-section-title">Jobs posted ({postedJobsLoading ? '…' : postedJobsTotal})</h3>
+          <p className="view-detail-section-subtitle" style={{ marginTop: 0 }}>
+            Non-deleted listings for this employer. <strong>Total jobs posted</strong> in profile may include removed jobs.
+            Status shows workflow; <strong>Completed</strong> means finished successfully.
+          </p>
+          {postedJobsError && (
+            <Alert variant="error" className="mgmt-alert" style={{ marginBottom: '0.75rem' }}>
+              {postedJobsError}
+            </Alert>
+          )}
+          {postedJobsLoading ? (
+            <p className="view-detail-empty-kyc">Loading jobs…</p>
+          ) : postedJobs.length === 0 && !postedJobsError ? (
+            <p className="view-detail-empty-kyc">No active job listings (deleted jobs are hidden).</p>
+          ) : postedJobs.length > 0 ? (
+            <div className="detail-jobs-table-wrap">
+              <table className="mgmt-table detail-jobs-table">
+                <thead>
+                  <tr>
+                    <th>Job title</th>
+                    <th>Status</th>
+                    <th>Completed?</th>
+                    <th aria-label="Open job" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {postedJobs.map((j) => {
+                    const out = jobCompletedSummary(j.status)
+                    return (
+                      <tr key={j._id}>
+                        <td>{j.jobTitle || '—'}</td>
+                        <td>
+                          <span className="mgmt-badge mgmt-status-availability">{jobStatusLabel(j.status)}</span>
+                        </td>
+                        <td>{out.text}</td>
+                        <td>
+                          <button
+                            type="button"
+                            className="mgmt-link"
+                            onClick={() => navigate(`/jobs/${j._id}`)}
+                          >
+                            Open job →
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </section>
       </div>
 
       <KycImageVerificationModal

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { workersApi } from '../services/api'
+import { jobStatusLabel, workerApplicationLabel } from '../utils/jobStatusLabels'
 import { kycLabel, kycImageVerificationLabel, getKycImageVerificationBadgeClass, getErrorMessage } from '../utils/format'
 import { getLatestKycImage, hasAnyKycImages, getAllKycImageItems } from '../utils/kycImages'
 import { PageHeader, Alert, Button } from '../components/ui'
@@ -22,6 +23,8 @@ export default function WorkerDetail() {
   const [error, setError] = useState('')
   const [kycImageModalOpen, setKycImageModalOpen] = useState(false)
   const [kycImageSubmitting, setKycImageSubmitting] = useState(false)
+  const [workHistory, setWorkHistory] = useState([])
+  const [workHistoryLoading, setWorkHistoryLoading] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -36,6 +39,28 @@ export default function WorkerDetail() {
         if (!cancelled) setLoading(false)
       })
     return () => { cancelled = true }
+  }, [workerId])
+
+  useEffect(() => {
+    if (!workerId) return
+    let cancelled = false
+    setWorkHistoryLoading(true)
+    workersApi
+      .jobApplications(workerId)
+      .then((res) => {
+        if (cancelled) return
+        const d = res.data || res
+        setWorkHistory(d.applications || [])
+      })
+      .catch(() => {
+        if (!cancelled) setWorkHistory([])
+      })
+      .finally(() => {
+        if (!cancelled) setWorkHistoryLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [workerId])
 
   /** Modal Approve: sets both kycImageVerification and kycStatus to approved. */
@@ -93,6 +118,7 @@ export default function WorkerDetail() {
   const wallet = worker?.wallet
   const displayName = worker?.fullName || worker?.phoneNumber || (phone !== '—' ? phone : 'Worker')
   const isLocked = worker?.isLocked === true
+  const displayUniqueWorkerId = worker?.uniqueWorkerId || (worker?._id ? 'W' + String(worker._id).slice(-8).toUpperCase() : '—')
 
   return (
     <div className="mgmt-page job-detail-page">
@@ -113,10 +139,10 @@ export default function WorkerDetail() {
           )}
           {isLocked && <span className="mgmt-badge badge-warning">Locked (assigned to job)</span>}
         </div>
-        {(phone !== '—' || worker?.uniqueWorkerId) && (
+        {(phone !== '—' || displayUniqueWorkerId !== '—') && (
           <p className="job-view-posted">
             {phone !== '—' && <span>{phone}</span>}
-            {worker?.uniqueWorkerId && <span>{phone !== '—' ? ' · ' : ''}ID: {worker.uniqueWorkerId}</span>}
+            {displayUniqueWorkerId !== '—' && <span>{phone !== '—' ? ' · ' : ''}ID: {displayUniqueWorkerId}</span>}
           </p>
         )}
       </div>
@@ -134,12 +160,10 @@ export default function WorkerDetail() {
           <span className="job-view-stat-value">{kyc?.status === 'APPROVED' ? 'Verified' : kyc?.status || '—'}</span>
           <span className="job-view-stat-label">KYC status</span>
         </div>
-        {worker?.dailyEarningExpectation != null && (
-          <div className="job-view-stat">
-            <span className="job-view-stat-value">₹{worker.dailyEarningExpectation}</span>
-            <span className="job-view-stat-label">Daily expectation</span>
-          </div>
-        )}
+        <div className="job-view-stat">
+          <span className="job-view-stat-value">{workHistoryLoading ? '…' : workHistory.length}</span>
+          <span className="job-view-stat-label">Job applications</span>
+        </div>
       </div>
 
       <div className="job-view-grid detail-view">
@@ -272,17 +296,15 @@ export default function WorkerDetail() {
           <div className="view-row"><span className="view-label">Full name</span><span className="view-value">{worker?.fullName || '—'}</span></div>
           <div className="view-row"><span className="view-label">Phone</span><span className="view-value">{phone}</span></div>
           <div className="view-row"><span className="view-label">Phone number (worker)</span><span className="view-value">{worker?.phoneNumber || '—'}</span></div>
-          <div className="view-row"><span className="view-label">WhatsApp</span><span className="view-value">{worker?.whatsappNumber || '—'}</span></div>
           <div className="view-row"><span className="view-label">Email</span><span className="view-value">{email}</span></div>
           <div className="view-row"><span className="view-label">Gender</span><span className="view-value">{worker?.gender || '—'}</span></div>
           <div className="view-row"><span className="view-label">Age</span><span className="view-value">{worker?.age ?? '—'}</span></div>
-          <div className="view-row"><span className="view-label">Date of birth</span><span className="view-value">{formatDate(worker?.dob)}</span></div>
           <p className="view-detail-section-subtitle">Profile</p>
           <div className="view-row"><span className="view-label">Worker level</span><span className="view-value">{worker?.workerLevel || '—'}</span></div>
           <div className="view-row"><span className="view-label">Availability</span><span className="view-value">{worker?.availabilityStatus || '—'}</span></div>
           <div className="view-row"><span className="view-label">Profile score</span><span className="view-value">{worker?.profileScore ?? '—'}</span></div>
           <div className="view-row"><span className="view-label">Rating average</span><span className="view-value">{worker?.ratingAverage ?? '—'}</span></div>
-          <div className="view-row"><span className="view-label">Unique worker ID</span><span className="view-value">{worker?.uniqueWorkerId || '—'}</span></div>
+          <div className="view-row"><span className="view-label">Unique worker ID</span><span className="view-value">{displayUniqueWorkerId}</span></div>
         </section>
 
         <section className="job-view-card">
@@ -304,10 +326,6 @@ export default function WorkerDetail() {
           <div className="view-row">
             <span className="view-label">Experience level</span>
             <span className="view-value">{worker?.experienceLevel || '—'}</span>
-          </div>
-          <div className="view-row">
-            <span className="view-label">Daily earning expectation</span>
-            <span className="view-value">{worker?.dailyEarningExpectation != null ? `₹${Number(worker.dailyEarningExpectation).toLocaleString('en-IN')}` : '—'}</span>
           </div>
         </section>
 
@@ -363,6 +381,64 @@ export default function WorkerDetail() {
             </div>
           </section>
         )}
+
+        <section className="job-view-card detail-page-jobs-section worker-detail-jobs-bottom">
+          <h3 className="view-section-title">Job activity ({workHistoryLoading ? '…' : workHistory.length})</h3>
+          <p className="view-detail-section-subtitle" style={{ marginTop: 0 }}>
+            Jobs this worker applied to. <strong>Worker status</strong> is the application outcome;{' '}
+            <strong>Job status</strong> is the employer&apos;s job lifecycle. Use <strong>Open job</strong> for full job details.
+          </p>
+          {workHistoryLoading ? (
+            <p className="view-detail-empty-kyc">Loading…</p>
+          ) : workHistory.length === 0 ? (
+            <p className="view-detail-empty-kyc">No applications yet.</p>
+          ) : (
+            <div className="detail-jobs-table-wrap">
+              <table className="mgmt-table detail-jobs-table">
+                <thead>
+                  <tr>
+                    <th>Job</th>
+                    <th>Worker status</th>
+                    <th>Job status</th>
+                    <th aria-label="Open job" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {workHistory.map((row) => (
+                    <tr key={String(row.applicationId)}>
+                      <td>{row.jobTitle || '—'}</td>
+                      <td>
+                        <span className="mgmt-badge mgmt-status-availability">
+                          {workerApplicationLabel(row.applicationStatus, row.jobStatus)}
+                        </span>
+                      </td>
+                      <td>
+                        {row.jobDeleted
+                          ? 'Removed'
+                          : row.jobStatus
+                            ? jobStatusLabel(row.jobStatus)
+                            : '—'}
+                      </td>
+                      <td>
+                        {row.jobId && !row.jobDeleted ? (
+                          <button
+                            type="button"
+                            className="mgmt-link"
+                            onClick={() => navigate(`/jobs/${row.jobId}`)}
+                          >
+                            Open job →
+                          </button>
+                        ) : (
+                          <span className="view-muted">Job removed</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
       </div>
 
       <KycImageVerificationModal
