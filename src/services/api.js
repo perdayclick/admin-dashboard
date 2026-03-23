@@ -110,7 +110,7 @@ export const workersApi = {
     apiRequest(`/api/worker/workers/${workerId}`, { method: 'DELETE' }),
   /** Admin: applications + job summary for worker detail */
   jobApplications: (workerId) =>
-    apiRequest(`/api/admin/workers/${workerId}/job-applications`),
+    apiRequest(`/api/worker/workers/${workerId}/job-applications`),
 }
 
 // Employers (admin uses /api/employer/employers with admin token)
