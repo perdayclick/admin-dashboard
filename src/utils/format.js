@@ -62,6 +62,52 @@ export function getKycImageVerificationBadgeClass(value) {
   return 'view-badge view-badge-warning'
 }
 
+/** Default timezone for admin-facing dates (India). */
+const ADMIN_TIME_ZONE = 'Asia/Kolkata'
+
+function toValidDate(value) {
+  if (value == null || value === '') return null
+  const d = value instanceof Date ? value : new Date(value)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+/**
+ * Date and time for admin lists (e.g. Payments, Penalties). Uses IST unless overridden.
+ * @param {string|number|Date} [value]
+ * @param {{ timeZone?: string }} [opts]
+ */
+export function formatAdminDateTime(value, opts = {}) {
+  const d = toValidDate(value)
+  if (!d) return '—'
+  const timeZone = opts.timeZone ?? ADMIN_TIME_ZONE
+  return new Intl.DateTimeFormat('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone,
+  }).format(d)
+}
+
+/**
+ * Calendar date only (no time), IST by default.
+ * @param {string|number|Date} [value]
+ * @param {{ timeZone?: string }} [opts]
+ */
+export function formatAdminDate(value, opts = {}) {
+  const d = toValidDate(value)
+  if (!d) return '—'
+  const timeZone = opts.timeZone ?? ADMIN_TIME_ZONE
+  return new Intl.DateTimeFormat('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone,
+  }).format(d)
+}
+
 /**
  * Parse API error for display message.
  * @param {Error} err
@@ -69,6 +115,30 @@ export function getKycImageVerificationBadgeClass(value) {
  * @returns {string}
  */
 export function getErrorMessage(err, defaultMsg = 'Request failed') {
-  const msg = err?.body?.message ?? err?.body?.error ?? err?.message
-  return typeof msg === 'string' ? msg : defaultMsg
+  let body = err?.body
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body)
+    } catch {
+      /* keep string */
+    }
+  }
+  const fromBody =
+    body && typeof body === 'object' ? body.message ?? body.error : null
+  const raw = (typeof fromBody === 'string' ? fromBody : null) ?? err?.message
+  const msg = typeof raw === 'string' ? raw.trim() : ''
+
+  if (!msg) return defaultMsg
+
+  if (/^route not found$/i.test(msg)) {
+    return 'API route not found. Restart the backend with the latest code (penalties live at GET /api/job/ledger/penalties).'
+  }
+  if (
+    /failed to fetch|networkerror|load failed|network request failed/i.test(msg) ||
+    err?.status === 0
+  ) {
+    return 'Cannot reach the server. Start the backend (npm run dev in the backend folder) and set VITE_API_URL to that host (e.g. http://localhost:5000).'
+  }
+
+  return typeof raw === 'string' ? raw : defaultMsg
 }

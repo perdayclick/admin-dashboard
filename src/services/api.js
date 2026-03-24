@@ -1,3 +1,5 @@
+import { isMongoObjectIdString } from '../utils/mongoId'
+
 // Use .env VITE_API_URL; fallback for dev so API calls hit backend (e.g. http://localhost:5000)
 const API_BASE =
   import.meta.env.VITE_API_URL ||
@@ -176,8 +178,11 @@ export const jobsApi = {
       method: 'POST',
       body: JSON.stringify({ workerId }),
     }),
-  unassignWorker: (jobId, workerId) =>
-    apiRequest(`/api/job/${jobId}/assign/${workerId}`, { method: 'DELETE' }),
+  unassignWorker: (jobId, workerId, employerId) =>
+    apiRequest(
+      `/api/job/${jobId}/assign/${workerId}${employerId ? `?employerId=${encodeURIComponent(employerId)}` : ''}`,
+      { method: 'DELETE' }
+    ),
   // Job flow – employer uses own token; admin passes employerId (query or body)
   getApplicants: (jobId, employerId) =>
     apiRequest(`/api/job/${jobId}/applicants${employerId ? `?employerId=${encodeURIComponent(employerId)}` : ''}`),
@@ -208,6 +213,28 @@ export const jobsApi = {
       method: 'POST',
       body: JSON.stringify({ action: 'pay-service-charge', ...(employerId && { employerId }) }),
     }),
+  /** Mark penalty paid (admin/employer/worker per backend rules). */
+  settlePenalty: (penaltyId) =>
+    apiRequest(`/api/job/penalty/${penaltyId}/settle`, { method: 'POST', body: JSON.stringify({}) }),
+}
+
+/** Admin job penalty ledger — /api/job/ledger/penalties (not /api/job/penalties: that collides with /:jobId). */
+export const penaltiesApi = {
+  list: (params = {}) => {
+    const sp = new URLSearchParams()
+    if (params.page) sp.set('page', params.page)
+    if (params.limit) sp.set('limit', params.limit)
+    if (params.jobId && isMongoObjectIdString(String(params.jobId))) sp.set('jobId', String(params.jobId).trim())
+    if (params.workerId && isMongoObjectIdString(String(params.workerId))) sp.set('workerId', String(params.workerId).trim())
+    if (params.status) sp.set('status', params.status)
+    const q = sp.toString()
+    return apiRequest(`/api/job/ledger/penalties${q ? `?${q}` : ''}`)
+  },
+  waive: (penaltyId, body = {}) =>
+    apiRequest(`/api/job/ledger/penalties/${penaltyId}/waive`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
 }
 
 // Skills (for job form dropdown)
@@ -222,10 +249,10 @@ export const skillsApi = {
   },
 }
 
-// Payment (Razorpay): create order for job, verify, job payment status (admin)
+// Payment (Razorpay): employer flow + admin ledger
 export const paymentApi = {
   createOrderForJob: (jobId) =>
-    apiRequest('/api/payment/create-order-for-job', {
+    apiRequest('/api/payment/create-order', {
       method: 'POST',
       body: JSON.stringify({ jobId }),
     }),
@@ -234,8 +261,32 @@ export const paymentApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  getJobPaymentStatus: (jobId) =>
-    apiRequest(`/api/payment/job/${jobId}/payment-status`),
+  /** Single payment row for a job (GET /api/payment/job/:jobId) */
+  getJobPayment: (jobId) => apiRequest(`/api/payment/job/${jobId}`),
+  getJobPaymentStatus: (jobId) => apiRequest(`/api/payment/job/${jobId}`),
+  /** Admin: paginated list (requires PAYMENT_APPROVE or superadmin) */
+  listAdminAll: (params = {}) => {
+    const sp = new URLSearchParams()
+    if (params.page) sp.set('page', params.page)
+    if (params.limit) sp.set('limit', params.limit)
+    if (params.status) sp.set('status', params.status)
+    if (params.payoutStatus) sp.set('payoutStatus', params.payoutStatus)
+    if (params.startDate) sp.set('startDate', params.startDate)
+    if (params.endDate) sp.set('endDate', params.endDate)
+    if (params.jobId) sp.set('jobId', params.jobId)
+    const q = sp.toString()
+    return apiRequest(`/api/payment/admin/all${q ? `?${q}` : ''}`)
+  },
+  triggerPayouts: () =>
+    apiRequest('/api/payment/admin/trigger-payouts', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }),
+  resolveDispute: (paymentId, resolution) =>
+    apiRequest('/api/payment/dispute/resolve', {
+      method: 'POST',
+      body: JSON.stringify({ paymentId, resolution }),
+    }),
 }
 
 // Categories (all under /api/categories; with admin token list returns all, without token only active)

@@ -5,7 +5,12 @@ export const JOB_STATUS = {
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',
   LIVE: 'LIVE',
+  HIRED: 'HIRED',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
+  INACTIVE_PENDING_PAYMENT: 'INACTIVE_PENDING_PAYMENT',
   CLOSED: 'CLOSED',
+  DISABLED: 'DISABLED',
 }
 
 /** Admin actions: Approve/Reject set status to APPROVED or REJECTED; then only LIVE or CLOSED allowed */
@@ -26,7 +31,12 @@ export const JOB_STATUS_OPTIONS = [
   { value: JOB_STATUS.APPROVED, label: 'Approved' },
   { value: JOB_STATUS.REJECTED, label: 'Rejected' },
   { value: JOB_STATUS.LIVE, label: 'Live' },
+  { value: JOB_STATUS.HIRED, label: 'Hired' },
+  { value: JOB_STATUS.COMPLETED, label: 'Completed' },
+  { value: JOB_STATUS.CANCELLED, label: 'Cancelled' },
+  { value: JOB_STATUS.INACTIVE_PENDING_PAYMENT, label: 'Pending payment' },
   { value: JOB_STATUS.CLOSED, label: 'Closed' },
+  { value: JOB_STATUS.DISABLED, label: 'Disabled' },
 ]
 
 export const WORK_TYPE = {
@@ -114,7 +124,9 @@ export function jobStatusLabel(s) {
     REJECTED: 'Rejected',
     HIRED: 'Hired',
     COMPLETED: 'Completed',
+    CANCELLED: 'Cancelled',
     INACTIVE_PENDING_PAYMENT: 'Pending payment',
+    DISABLED: 'Disabled',
   }
   return map[s] || s || '—'
 }
@@ -127,5 +139,7 @@ export function jobStatusBadgeClass(s) {
   if (s === 'CLOSED') return 'badge-secondary'
   if (s === 'REJECTED') return 'badge-danger'
   if (s === 'INACTIVE_PENDING_PAYMENT') return 'badge-warning'
+  if (s === 'CANCELLED') return 'badge-secondary'
+  if (s === 'DISABLED') return 'badge-danger'
   return 'badge-warning'
 }
