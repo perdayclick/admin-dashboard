@@ -11,6 +11,7 @@ const SIDEBAR_LINKS = [
   { to: '/categories', label: 'Categories', icon: 'category' },
   { to: '/agents', label: 'Agents', icon: 'agent' },
   { to: '/jobs', label: 'Jobs & Tasks', icon: 'briefcase' },
+  { to: '/penalties', label: 'Penalties', icon: 'fine' },
   { to: '/payments', label: 'Payments', icon: 'payment' },
   { to: '/analytics', label: 'Analytics', icon: 'chart' },
   { to: '/fraud', label: 'Fraud Control', icon: 'shield' },
@@ -50,6 +51,13 @@ const iconSvg = (name) => {
     case 'chart':
       return (
         <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      )
+    case 'fine':
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M8 8l8 8M16 8l-8 8" />
+        </svg>
       )
     case 'shield':
       return (

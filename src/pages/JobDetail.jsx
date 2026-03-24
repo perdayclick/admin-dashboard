@@ -1,11 +1,19 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { jobsApi, skillsApi, workersApi, paymentApi } from '../services/api'
+import { jobsApi, skillsApi, workersApi, paymentApi, penaltiesApi } from '../services/api'
 import { jobStatusLabel, jobStatusBadgeClass, JOB_STATUS, CANCELLATION_REASON, SHIFT_SLOT_LABELS } from '../constants/jobEnums'
-import { getErrorMessage } from '../utils/format'
+import {
+  PENALTY_STATUS,
+  penaltyStatusLabel,
+  penaltyStatusBadgeClass,
+  penaltyReasonLabel,
+  penaltyPayerLabel,
+} from '../constants/penaltyEnums'
+import { getErrorMessage, formatAdminDate, formatAdminDateTime } from '../utils/format'
 import { PageHeader, Alert, Button } from '../components/ui'
 import JobForm from '../components/JobForm'
 import ConfirmModal from '../components/ConfirmModal'
+import WaivePenaltyModal from '../components/WaivePenaltyModal'
 import '../styles/ManagementPage.css'
 import '../components/Modal.css'
 
@@ -88,7 +96,7 @@ function CancelJobModal({ reason, note, onReasonChange, onNoteChange, onSubmit, 
           <button type="button" className="modal-close" onClick={onCancel} aria-label="Close">&times;</button>
         </div>
         <div className="modal-body">
-          <p className="modal-message" style={{ marginBottom: '1rem' }}>Choose a reason and optionally add a note. The worker will be unassigned; service charge may apply.</p>
+          <p className="modal-message" style={{ marginBottom: '1rem' }}>Legacy bulk cancel flow: choose a reason and note. Prefer per-worker removal from assigned workers when using the new penalty-aware job flow.</p>
           <label className="modal-label">
             Reason
             <select value={reason} onChange={(e) => onReasonChange(e.target.value)} className="mgmt-select modal-input" style={{ width: '100%' }}>
@@ -126,13 +134,6 @@ function loadRazorpayScript() {
     script.onerror = () => reject(new Error('Failed to load Razorpay checkout'))
     document.body.appendChild(script)
   })
-}
-
-function formatDate(v) {
-  if (!v) return '—'
-  if (typeof v === 'string') return v.slice(0, 10)
-  if (v.toISOString) return v.toISOString().slice(0, 10)
-  return '—'
 }
 
 function formatPosted(createdAt) {
@@ -186,6 +187,31 @@ export default function JobDetail() {
   const [paymentStatus, setPaymentStatus] = useState({ paid: false, payment: null })
   const [paymentStatusLoading, setPaymentStatusLoading] = useState(false)
   const [payButtonLoading, setPayButtonLoading] = useState(false)
+  const [penalties, setPenalties] = useState([])
+  const [penaltiesLoading, setPenaltiesLoading] = useState(false)
+  const [penaltiesError, setPenaltiesError] = useState('')
+  const [penaltySettleTarget, setPenaltySettleTarget] = useState(null)
+  const [penaltyWaiveTarget, setPenaltyWaiveTarget] = useState(null)
+  const [penaltyWaiveNote, setPenaltyWaiveNote] = useState('')
+  const [penaltyActionLoading, setPenaltyActionLoading] = useState(false)
+
+  const loadPenalties = useCallback(() => {
+    if (!jobId) return
+    setPenaltiesLoading(true)
+    setPenaltiesError('')
+    penaltiesApi
+      .list({ jobId, limit: 50 })
+      .then((res) => {
+        const payload = res?.data ?? res
+        setPenalties(Array.isArray(payload?.penalties) ? payload.penalties : [])
+        setPenaltiesError('')
+      })
+      .catch((err) => {
+        setPenalties([])
+        setPenaltiesError(getErrorMessage(err, 'Failed to load penalties'))
+      })
+      .finally(() => setPenaltiesLoading(false))
+  }, [jobId])
 
   useEffect(() => {
     let cancelled = false
@@ -212,8 +238,9 @@ export default function JobDetail() {
     if (!jobId) return
     setPaymentStatusLoading(true)
     paymentApi.getJobPaymentStatus(jobId).then((res) => {
-      const data = res?.data ?? res
-      setPaymentStatus({ paid: !!data?.paid, payment: data?.payment ?? null })
+      const payment = res?.data ?? res
+      const paid = !!(payment && payment.status === 'captured')
+      setPaymentStatus({ paid, payment: payment || null })
     }).catch(() => {
       setPaymentStatus({ paid: false, payment: null })
     }).finally(() => setPaymentStatusLoading(false))
@@ -223,6 +250,10 @@ export default function JobDetail() {
     if (job?.status === JOB_STATUS.COMPLETED) fetchJobPaymentStatus()
     else setPaymentStatus({ paid: false, payment: null })
   }, [job?.status, jobId, fetchJobPaymentStatus])
+
+  useEffect(() => {
+    if (job?._id) loadPenalties()
+  }, [job?._id, loadPenalties])
 
   const handleUpdate = async (values) => {
     setFormError('')
@@ -264,47 +295,18 @@ export default function JobDetail() {
 
   const loadWorkers = () => {
     setWorkersLoading(true)
-    workersApi.list({ limit: 200 }).then((res) => {
-      const payload = res?.data ?? res
-      setWorkers(Array.isArray(payload?.workers) ? payload.workers : [])
-    }).catch(() => setWorkers([])).finally(() => setWorkersLoading(false))
+    workersApi
+      .list({ page: 1, limit: 100 })
+      .then((res) => {
+        const payload = res?.data ?? res
+        setWorkers(Array.isArray(payload?.workers) ? payload.workers : [])
+      })
+      .catch((err) => {
+        setWorkers([])
+        setError(getErrorMessage(err, 'Failed to load workers for assignment'))
+      })
+      .finally(() => setWorkersLoading(false))
   }
-
-  const handleAssignOpen = () => {
-    setAssignOpen(true)
-    setSelectedWorkerId('')
-    loadWorkers()
-  }
-
-  const handleAssignSubmit = async () => {
-    if (!selectedWorkerId) return
-    setAssigning(true)
-    try {
-      const res = await jobsApi.assignWorker(jobId, selectedWorkerId)
-      setJob((res?.data ?? res) || job)
-      setAssignOpen(false)
-    } catch (err) {
-      setError(getErrorMessage(err, 'Assign failed'))
-    } finally {
-      setAssigning(false)
-    }
-  }
-
-  const handleUnassign = async (workerId) => {
-    setUnassigningId(workerId)
-    try {
-      const res = await jobsApi.unassignWorker(jobId, workerId)
-      setJob((res?.data ?? res) || job)
-    } catch (err) {
-      setError(getErrorMessage(err, 'Unassign failed'))
-    } finally {
-      setUnassigningId(null)
-    }
-  }
-
-  const assignedWorkers = Array.isArray(job?.assignedWorkers) ? job.assignedWorkers : []
-  const assignedIds = assignedWorkers.map((w) => w._id || w)
-  const workersToShow = workers.filter((w) => !assignedIds.includes(w._id))
 
   const employerId = job?.employerId?._id || job?.employerId
 
@@ -315,6 +317,75 @@ export default function JobDetail() {
       setApplicants(Array.isArray(res?.data?.applicants) ? res.data.applicants : [])
     }).catch(() => setApplicants([])).finally(() => setApplicantsLoading(false))
   }
+
+  const handleAssignOpen = () => {
+    setAssignOpen(true)
+    setSelectedWorkerId('')
+    setError('')
+    loadWorkers()
+  }
+
+  const handleAssignSubmit = async () => {
+    if (!selectedWorkerId) return
+    setAssigning(true)
+    try {
+      const res = await jobsApi.assignWorker(jobId, selectedWorkerId)
+      setJob((res?.data ?? res) || job)
+      setAssignOpen(false)
+      if (employerId) loadApplicants()
+    } catch (err) {
+      setError(getErrorMessage(err, 'Assign failed'))
+    } finally {
+      setAssigning(false)
+    }
+  }
+
+  const handleUnassign = async (workerId) => {
+    const emp = job?.employerId?._id || job?.employerId
+    setUnassigningId(workerId)
+    try {
+      const res = await jobsApi.unassignWorker(jobId, workerId, emp || undefined)
+      setJob((res?.data ?? res) || job)
+      loadPenalties()
+    } catch (err) {
+      setError(getErrorMessage(err, 'Unassign failed'))
+    } finally {
+      setUnassigningId(null)
+    }
+  }
+
+  const handlePenaltySettleConfirm = async () => {
+    if (!penaltySettleTarget) return
+    setPenaltyActionLoading(true)
+    try {
+      await jobsApi.settlePenalty(penaltySettleTarget._id)
+      setPenaltySettleTarget(null)
+      loadPenalties()
+    } catch (err) {
+      setError(getErrorMessage(err, 'Mark penalty paid failed'))
+    } finally {
+      setPenaltyActionLoading(false)
+    }
+  }
+
+  const handlePenaltyWaiveConfirm = async () => {
+    if (!penaltyWaiveTarget) return
+    setPenaltyActionLoading(true)
+    try {
+      await penaltiesApi.waive(penaltyWaiveTarget._id, { messageNote: penaltyWaiveNote.trim() || undefined })
+      setPenaltyWaiveTarget(null)
+      setPenaltyWaiveNote('')
+      loadPenalties()
+    } catch (err) {
+      setError(getErrorMessage(err, 'Waive penalty failed'))
+    } finally {
+      setPenaltyActionLoading(false)
+    }
+  }
+
+  const assignedWorkers = Array.isArray(job?.assignedWorkers) ? job.assignedWorkers : []
+  const assignedIds = assignedWorkers.map((w) => w._id || w)
+  const workersToShow = workers.filter((w) => !assignedIds.includes(w._id))
 
   const handleHire = async (workerId) => {
     setHireLoading(true)
@@ -648,15 +719,106 @@ export default function JobDetail() {
           </div>
         </section>
 
+        <section className="job-view-card job-view-card-full">
+          <h3 className="view-section-title">Penalties (job flow)</h3>
+          <p className="view-detail-section-subtitle" style={{ marginTop: '-0.5rem', marginBottom: '0.75rem' }}>
+            Ledger for this job: post-hire worker withdraw, employer remove hire, or disable after hire. High amounts (≥ ₹100) may require settlement before full unlock.
+            {' '}
+            <button type="button" className="mgmt-link" onClick={() => navigate(`/penalties?jobId=${encodeURIComponent(jobId)}`)}>
+              Full list filtered to this job
+            </button>
+          </p>
+          <div style={{ marginBottom: '0.75rem' }}>
+            <Button variant="secondary" onClick={loadPenalties} disabled={penaltiesLoading}>
+              {penaltiesLoading ? 'Refreshing…' : 'Refresh penalties'}
+            </Button>
+          </div>
+          {penaltiesError && (
+            <Alert variant="error" className="mgmt-alert" style={{ marginBottom: '0.75rem' }}>{penaltiesError}</Alert>
+          )}
+          {!penaltiesLoading && !penaltiesError && penalties.length === 0 ? (
+            <p className="view-value" style={{ color: '#6b7280', fontSize: '0.9375rem' }}>No penalty present for this job.</p>
+          ) : penalties.length > 0 ? (
+            <div className="job-detail-table-wrap">
+              <table className="mgmt-table">
+                <thead>
+                  <tr>
+                    <th>Worker</th>
+                    <th>Payer</th>
+                    <th>Reason</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {penalties.map((p) => {
+                    const w = p.workerId
+                    const wid = w?._id || w
+                    const name = w?.fullName || w?.phoneNumber || (wid ? String(wid).slice(-6) : '—')
+                    const canAct = p.status === PENALTY_STATUS.DUE || p.status === PENALTY_STATUS.PENDING
+                    return (
+                      <tr key={p._id}>
+                        <td>
+                          {wid ? (
+                            <button type="button" className="mgmt-link" onClick={() => navigate(`/workers/${wid}`)}>
+                              {name}
+                            </button>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                        <td>{penaltyPayerLabel(p.payerType)}</td>
+                        <td>{penaltyReasonLabel(p.reason)}</td>
+                        <td>{formatCurrency(p.amount)}</td>
+                        <td>
+                          <span className={`mgmt-badge ${penaltyStatusBadgeClass(p.status)}`}>
+                            {penaltyStatusLabel(p.status)}
+                          </span>
+                          {p.mustPayBeforeUnlock && canAct && (
+                            <span className="mgmt-badge badge-warning" style={{ marginLeft: '0.35rem' }} title="Blocks unlock until settled">Blocking</span>
+                          )}
+                        </td>
+                        <td>
+                          {canAct ? (
+                            <div className="mgmt-actions-cell">
+                              <Button
+                                variant="primary"
+                                onClick={() => setPenaltySettleTarget(p)}
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}
+                              >
+                                Mark paid
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                onClick={() => { setPenaltyWaiveTarget(p); setPenaltyWaiveNote('') }}
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}
+                              >
+                                Waive
+                              </Button>
+                            </div>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </section>
+
         <section className="job-view-card">
           <h3 className="view-section-title">Schedule &amp; timing</h3>
           <div className="view-row">
             <span className="view-label">Start date</span>
-            <span className="view-value">{formatDate(job?.startDate)}</span>
+            <span className="view-value">{formatAdminDate(job?.startDate)}</span>
           </div>
           <div className="view-row">
             <span className="view-label">End date</span>
-            <span className="view-value">{formatDate(job?.endDate)}</span>
+            <span className="view-value">{formatAdminDate(job?.endDate)}</span>
           </div>
           <div className="view-row">
             <span className="view-label">Work timings</span>
@@ -783,11 +945,16 @@ export default function JobDetail() {
         {job?.status === JOB_STATUS.COMPLETED && (
           <section className="job-view-card">
             <h3 className="view-section-title">Job completion payment</h3>
+            <p className="view-detail-section-subtitle" style={{ marginTop: '-0.35rem', marginBottom: '0.5rem' }}>
+              <button type="button" className="mgmt-link" onClick={() => navigate(`/payments?jobId=${encodeURIComponent(jobId)}`)}>
+                All payment rows for this job in Payments
+              </button>
+            </p>
             {paymentStatusLoading ? (
               <p className="view-value" style={{ color: 'var(--text-muted)' }}>Checking payment status…</p>
             ) : paymentStatus.paid ? (
               <p className="view-value" style={{ color: 'var(--success)' }}>
-                Paid{paymentStatus.payment?.createdAt ? ` on ${formatDate(paymentStatus.payment.createdAt)}` : ''}.
+                Paid{paymentStatus.payment?.createdAt ? ` on ${formatAdminDateTime(paymentStatus.payment.createdAt)}` : ''}.
               </p>
             ) : (
               <>
@@ -805,7 +972,7 @@ export default function JobDetail() {
         <section className="job-view-card job-view-card-full">
           <h3 className="view-section-title">Assigned workers</h3>
           <p className="view-detail-section-subtitle" style={{ marginTop: '-0.5rem', marginBottom: '0.75rem' }}>
-            Workers assigned to this job. You can assign more or unassign.
+            Assign or remove workers. If someone is <strong>hired</strong>, removing them runs the employer penalty flow (same as employer “remove hire” in the app); legacy assign-only rows can be removed without a penalty.
           </p>
           <div style={{ marginBottom: '0.75rem' }}>
             <Button variant="primary" onClick={handleAssignOpen}>Assign worker</Button>
@@ -937,6 +1104,28 @@ export default function JobDetail() {
           onSubmit={handleCancelSubmit}
           onCancel={() => { setCancelOpen(false); setCancelReason(CANCELLATION_REASON.OTHER); setCancelNote(''); }}
           loading={cancelSubmitting}
+        />
+      )}
+
+      {penaltySettleTarget && (
+        <ConfirmModal
+          title="Mark penalty paid"
+          message={`Record ${formatCurrency(penaltySettleTarget.amount)} as paid (${penaltyReasonLabel(penaltySettleTarget.reason)})?`}
+          confirmLabel="Mark paid"
+          onConfirm={handlePenaltySettleConfirm}
+          onCancel={() => setPenaltySettleTarget(null)}
+          loading={penaltyActionLoading}
+          variant="primary"
+        />
+      )}
+
+      {penaltyWaiveTarget && (
+        <WaivePenaltyModal
+          note={penaltyWaiveNote}
+          onNoteChange={setPenaltyWaiveNote}
+          onConfirm={handlePenaltyWaiveConfirm}
+          onCancel={() => { setPenaltyWaiveTarget(null); setPenaltyWaiveNote('') }}
+          loading={penaltyActionLoading}
         />
       )}
     </div>

@@ -2,18 +2,17 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { workersApi } from '../services/api'
 import { jobStatusLabel, workerApplicationLabel } from '../utils/jobStatusLabels'
-import { kycLabel, kycImageVerificationLabel, getKycImageVerificationBadgeClass, getErrorMessage } from '../utils/format'
+import {
+  kycLabel,
+  kycImageVerificationLabel,
+  getKycImageVerificationBadgeClass,
+  getErrorMessage,
+  formatAdminDate,
+} from '../utils/format'
 import { getLatestKycImage, hasAnyKycImages, getAllKycImageItems } from '../utils/kycImages'
 import { PageHeader, Alert, Button } from '../components/ui'
 import KycImageVerificationModal from '../components/KycImageVerificationModal'
 import '../styles/ManagementPage.css'
-
-function formatDate(v) {
-  if (!v) return '—'
-  if (typeof v === 'string') return v.slice(0, 10)
-  if (v.toISOString) return v.toISOString().slice(0, 10)
-  return '—'
-}
 
 export default function WorkerDetail() {
   const { workerId } = useParams()
@@ -252,7 +251,7 @@ export default function WorkerDetail() {
               {kyc?.verifiedAt && (
                 <div className="view-row">
                   <span className="view-label">Verified at</span>
-                  <span className="view-value">{formatDate(kyc.verifiedAt)}</span>
+                  <span className="view-value">{formatAdminDate(kyc.verifiedAt)}</span>
                 </div>
               )}
               {kyc?.remarks && (

@@ -10,6 +10,8 @@ import Employers from '../pages/Employers'
 import EmployerDetail from '../pages/EmployerDetail'
 import Jobs from '../pages/Jobs'
 import JobDetail from '../pages/JobDetail'
+import Penalties from '../pages/Penalties'
+import Payments from '../pages/Payments'
 import Placeholder from '../pages/Placeholder'
 import Categories from '../pages/Categories'
 import PaymentSuccess from '../pages/PaymentSuccess'
@@ -40,9 +42,10 @@ export const router = createBrowserRouter(
         { path: 'agents', element: <Placeholder title="Agents" /> },
         { path: 'jobs', element: <Jobs /> },
         { path: 'jobs/:jobId', element: <JobDetail /> },
+        { path: 'penalties', element: <Penalties /> },
         { path: 'payment/success', element: <PaymentSuccess /> },
         { path: 'payment/fail', element: <PaymentFail /> },
-        { path: 'payments', element: <Placeholder title="Payments" /> },
+        { path: 'payments', element: <Payments /> },
         { path: 'analytics', element: <Placeholder title="Analytics" /> },
         { path: 'fraud', element: <Placeholder title="Fraud Control" /> },
       ],

@@ -2,18 +2,17 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { employersApi, jobsApi } from '../services/api'
 import { jobStatusLabel, jobCompletedSummary } from '../utils/jobStatusLabels'
-import { kycLabel, kycImageVerificationLabel, getKycImageVerificationBadgeClass, getErrorMessage } from '../utils/format'
+import {
+  kycLabel,
+  kycImageVerificationLabel,
+  getKycImageVerificationBadgeClass,
+  getErrorMessage,
+  formatAdminDate,
+} from '../utils/format'
 import { hasAnyKycImages, getAllKycImageItems } from '../utils/kycImages'
 import { PageHeader, Alert, Button } from '../components/ui'
 import KycImageVerificationModal from '../components/KycImageVerificationModal'
 import '../styles/ManagementPage.css'
-
-function formatDate(v) {
-  if (!v) return '—'
-  if (typeof v === 'string') return v.slice(0, 10)
-  if (v.toISOString) return v.toISOString().slice(0, 10)
-  return '—'
-}
 
 export default function EmployerDetail() {
   const { employerId } = useParams()
@@ -286,7 +285,7 @@ export default function EmployerDetail() {
               {kyc?.verifiedAt && (
                 <div className="view-row">
                   <span className="view-label">Verified at</span>
-                  <span className="view-value">{formatDate(kyc.verifiedAt)}</span>
+                  <span className="view-value">{formatAdminDate(kyc.verifiedAt)}</span>
                 </div>
               )}
               {kyc?.remarks && (
@@ -332,7 +331,7 @@ export default function EmployerDetail() {
           <div className="view-row"><span className="view-label">Email</span><span className="view-value">{email}</span></div>
           <div className="view-row"><span className="view-label">Unique employer ID</span><span className="view-value">{displayUniqueEmployerId}</span></div>
           <div className="view-row"><span className="view-label">Gender</span><span className="view-value">{employer?.gender || '—'}</span></div>
-          <div className="view-row"><span className="view-label">Date of birth</span><span className="view-value">{formatDate(employer?.dob)}</span></div>
+          <div className="view-row"><span className="view-label">Date of birth</span><span className="view-value">{formatAdminDate(employer?.dob)}</span></div>
           <p className="view-detail-section-subtitle">Business</p>
           <div className="view-row"><span className="view-label">Business name</span><span className="view-value">{employer?.businessName || '—'}</span></div>
           <div className="view-row"><span className="view-label">Company name</span><span className="view-value">{employer?.companyName || '—'}</span></div>

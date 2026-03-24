@@ -1,4 +1,9 @@
-import { kycLabel as formatKycLabel, kycImageVerificationLabel, getKycImageVerificationBadgeClass } from '../utils/format'
+import {
+  kycLabel as formatKycLabel,
+  kycImageVerificationLabel,
+  getKycImageVerificationBadgeClass,
+  formatAdminDate,
+} from '../utils/format'
 import { hasAnyKycImages, getAllKycImageItems } from '../utils/kycImages'
 import './Modal.css'
 
@@ -6,13 +11,6 @@ function kycClass(s) {
   if (s === 'APPROVED') return 'view-kyc-verified'
   if (s === 'REJECTED') return 'view-kyc-rejected'
   return 'view-kyc-pending'
-}
-
-function formatDate(v) {
-  if (!v) return '—'
-  if (typeof v === 'string') return v.slice(0, 10)
-  if (v.toISOString) return v.toISOString().slice(0, 10)
-  return '—'
 }
 
 export default function WorkerView({ worker, onClose, onApproveKyc }) {
@@ -205,7 +203,7 @@ export default function WorkerView({ worker, onClose, onApproveKyc }) {
             {kyc?.verifiedAt && (
               <div className="view-row">
                 <span className="view-label">Verified at</span>
-                <span className="view-value">{formatDate(kyc.verifiedAt)}</span>
+                <span className="view-value">{formatAdminDate(kyc.verifiedAt)}</span>
               </div>
             )}
             {kyc?.remarks && (
