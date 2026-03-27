@@ -287,6 +287,8 @@ export const paymentApi = {
       method: 'POST',
       body: JSON.stringify({ paymentId, resolution }),
     }),
+  /** Admin: payment dashboard stats — revenue, payout cron health, disputes, trend */
+  getDashboardStats: () => apiRequest('/api/payment/admin/stats'),
 }
 
 // Categories (all under /api/categories; with admin token list returns all, without token only active)
