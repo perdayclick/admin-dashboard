@@ -11,7 +11,13 @@ import EmployerDetail from '../pages/EmployerDetail'
 import Jobs from '../pages/Jobs'
 import JobDetail from '../pages/JobDetail'
 import Penalties from '../pages/Penalties'
-import Payments from '../pages/Payments'
+import PaymentsLayout from '../pages/payments/PaymentsLayout'
+import PaymentsIndexRedirect from '../pages/payments/PaymentsIndexRedirect'
+import PaymentsOverviewPage from '../pages/payments/PaymentsOverviewPage'
+import PaymentsTransactionsPage from '../pages/payments/PaymentsTransactionsPage'
+import PaymentTransactionDetailPage from '../pages/payments/PaymentTransactionDetailPage'
+import PaymentsPayoutsPage from '../pages/payments/PaymentsPayoutsPage'
+import PaymentsDisputesPage from '../pages/payments/PaymentsDisputesPage'
 import Placeholder from '../pages/Placeholder'
 import Categories from '../pages/Categories'
 import PaymentSuccess from '../pages/PaymentSuccess'
@@ -45,7 +51,18 @@ export const router = createBrowserRouter(
         { path: 'penalties', element: <Penalties /> },
         { path: 'payment/success', element: <PaymentSuccess /> },
         { path: 'payment/fail', element: <PaymentFail /> },
-        { path: 'payments', element: <Payments /> },
+        {
+          path: 'payments',
+          element: <PaymentsLayout />,
+          children: [
+            { index: true, element: <PaymentsIndexRedirect /> },
+            { path: 'overview', element: <PaymentsOverviewPage /> },
+            { path: 'transactions/:paymentId', element: <PaymentTransactionDetailPage /> },
+            { path: 'transactions', element: <PaymentsTransactionsPage /> },
+            { path: 'payouts', element: <PaymentsPayoutsPage /> },
+            { path: 'disputes', element: <PaymentsDisputesPage /> },
+          ],
+        },
         { path: 'analytics', element: <Placeholder title="Analytics" /> },
         { path: 'fraud', element: <Placeholder title="Fraud Control" /> },
       ],

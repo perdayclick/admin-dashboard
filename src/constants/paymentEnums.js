@@ -75,3 +75,37 @@ export function disputeStatusLabel(d) {
   }
   return map[d.status] || d.status
 }
+
+/** Admin dispute queue toolbar */
+export const DISPUTE_QUEUE_FILTER_OPTIONS = [
+  { value: 'all', label: 'All dispute states' },
+  { value: 'open', label: 'Open — needs action' },
+  { value: 'resolved_worker', label: 'Resolved → worker' },
+  { value: 'resolved_employer', label: 'Resolved → employer' },
+  { value: 'auto_released', label: 'Auto-released' },
+]
+
+/** Open dispute → final dispute.status (matches Payment schema enum, excluding none/open). */
+export const DISPUTE_RESOLVE_OUTCOME_OPTIONS = [
+  {
+    value: 'resolved_worker',
+    label: 'Resolved — worker (release payout)',
+    hint: 'Same as “→ Worker”: pending payout for open rows on this job.',
+  },
+  {
+    value: 'resolved_employer',
+    label: 'Resolved — employer (refund path)',
+    hint: 'Marks rows refunded / payout N/A; triggers employer-favour path on server.',
+  },
+  {
+    value: 'auto_released',
+    label: 'Auto-released (worker payout)',
+    hint: 'Same payout effect as SLA auto-release; status stored as auto_released for reporting.',
+  },
+]
+
+export function formatDisputeReason(reason) {
+  if (!reason) return '—'
+  if (reason === 'worker_denied_cash_receipt') return 'Worker denied cash receipt'
+  return reason.length > 120 ? `${reason.slice(0, 117)}…` : reason
+}

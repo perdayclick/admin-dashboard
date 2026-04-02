@@ -277,16 +277,53 @@ export const paymentApi = {
     const q = sp.toString()
     return apiRequest(`/api/payment/admin/all${q ? `?${q}` : ''}`)
   },
+  /** Admin: single payment by Mongo _id (detail view) */
+  getAdminPayment: (paymentId) =>
+    apiRequest(`/api/payment/admin/payment/${paymentId}`),
   triggerPayouts: () =>
     apiRequest('/api/payment/admin/trigger-payouts', {
       method: 'POST',
       body: JSON.stringify({}),
     }),
-  resolveDispute: (paymentId, resolution) =>
+  /** Same rules as server 30m cron — ONLINE + failed + retries left + no dispute */
+  retryFailedPayoutsBatch: () =>
+    apiRequest('/api/payment/admin/retry-failed-payouts', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }),
+  retryPayout: (paymentId) =>
+    apiRequest('/api/payment/admin/retry-payout', {
+      method: 'POST',
+      body: JSON.stringify({ paymentId }),
+    }),
+  /** disputeStatus: resolved_worker | resolved_employer | auto_released (batch by job when applicable) */
+  resolveDispute: (paymentId, disputeStatus, resolutionNotes) =>
     apiRequest('/api/payment/dispute/resolve', {
       method: 'POST',
-      body: JSON.stringify({ paymentId, resolution }),
+      body: JSON.stringify({
+        paymentId,
+        disputeStatus,
+        ...(resolutionNotes ? { resolutionNotes } : {}),
+      }),
     }),
+  /** Admin: internal notes only; payment must already be resolved (not open/none). */
+  updateDisputeNotes: (paymentId, resolutionNotes) =>
+    apiRequest('/api/payment/admin/dispute/notes', {
+      method: 'PATCH',
+      body: JSON.stringify({ paymentId, resolutionNotes: resolutionNotes ?? '' }),
+    }),
+  /** Admin: paginated dispute queue (open + history) */
+  listAdminDisputes: (params = {}) => {
+    const sp = new URLSearchParams()
+    if (params.page) sp.set('page', params.page)
+    if (params.limit) sp.set('limit', params.limit)
+    if (params.disputeStatus && params.disputeStatus !== 'all') sp.set('disputeStatus', params.disputeStatus)
+    if (params.jobId) sp.set('jobId', params.jobId)
+    if (params.startDate) sp.set('startDate', params.startDate)
+    if (params.endDate) sp.set('endDate', params.endDate)
+    const q = sp.toString()
+    return apiRequest(`/api/payment/admin/disputes${q ? `?${q}` : ''}`)
+  },
   /** Admin: payment dashboard stats — revenue, payout cron health, disputes, trend */
   getDashboardStats: () => apiRequest('/api/payment/admin/stats'),
 }

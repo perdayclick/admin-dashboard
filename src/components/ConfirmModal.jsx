@@ -1,7 +1,15 @@
 import './Modal.css'
 
-export default function ConfirmModal({ title, message, confirmLabel, onConfirm, onCancel, loading, variant = 'primary' }) {
-  console.log("heelo")
+export default function ConfirmModal({
+  title,
+  message,
+  confirmLabel,
+  onConfirm,
+  onCancel,
+  loading,
+  variant = 'primary',
+  children,
+}) {
   return (
     <div className="modal-backdrop" onClick={onCancel}>
       <div className="modal-box modal-confirm" onClick={(e) => e.stopPropagation()}>
@@ -10,6 +18,7 @@ export default function ConfirmModal({ title, message, confirmLabel, onConfirm, 
           <button type="button" className="modal-close" onClick={onCancel} aria-label="Close">&times;</button>
         </div>
         <p className="modal-message">{message}</p>
+        {children}
         <div className="modal-actions">
           <button type="button" className="modal-btn secondary" onClick={onCancel} disabled={loading}>Cancel</button>
           <button type="button" className={`modal-btn ${variant === 'danger' ? 'danger' : 'primary'}`} onClick={onConfirm} disabled={loading}>

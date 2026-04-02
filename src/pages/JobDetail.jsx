@@ -946,7 +946,7 @@ export default function JobDetail() {
           <section className="job-view-card">
             <h3 className="view-section-title">Job completion payment</h3>
             <p className="view-detail-section-subtitle" style={{ marginTop: '-0.35rem', marginBottom: '0.5rem' }}>
-              <button type="button" className="mgmt-link" onClick={() => navigate(`/payments?jobId=${encodeURIComponent(jobId)}`)}>
+              <button type="button" className="mgmt-link" onClick={() => navigate(`/payments/transactions?jobId=${encodeURIComponent(jobId)}`)}>
                 All payment rows for this job in Payments
               </button>
             </p>

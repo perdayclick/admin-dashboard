@@ -1,20 +1,34 @@
-import { useState } from 'react'
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Outlet, NavLink, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import './MainLayout.css'
 
-const SIDEBAR_LINKS = [
-  { to: '/dashboard', label: 'Overview', icon: 'dashboard' },
-  { to: '/users', label: 'Users', icon: 'users' },
-  { to: '/workers', label: 'Workers', icon: 'worker' },
-  { to: '/employers', label: 'Employers', icon: 'building' },
-  { to: '/categories', label: 'Categories', icon: 'category' },
-  { to: '/agents', label: 'Agents', icon: 'agent' },
-  { to: '/jobs', label: 'Jobs & Tasks', icon: 'briefcase' },
-  { to: '/penalties', label: 'Penalties', icon: 'fine' },
-  { to: '/payments', label: 'Payments', icon: 'payment' },
-  { to: '/analytics', label: 'Analytics', icon: 'chart' },
-  { to: '/fraud', label: 'Fraud Control', icon: 'shield' },
+const PAYMENT_SIDEBAR_CHILDREN = [
+  { to: '/payments/overview', section: 'overview', label: 'Overview' },
+  { to: '/payments/transactions', section: 'transactions', label: 'Transactions' },
+  { to: '/payments/payouts', section: 'payouts', label: 'Payout Cron' },
+  { to: '/payments/disputes', section: 'disputes', label: 'Disputes' },
+]
+
+function paymentsSectionFromPath(pathname) {
+  if (pathname.includes('/payments/transactions')) return 'transactions'
+  if (pathname.includes('/payments/payouts')) return 'payouts'
+  if (pathname.includes('/payments/disputes')) return 'disputes'
+  return 'overview'
+}
+
+const SIDEBAR_ENTRIES = [
+  { kind: 'link', to: '/dashboard', label: 'Overview', icon: 'dashboard' },
+  { kind: 'link', to: '/users', label: 'Users', icon: 'users' },
+  { kind: 'link', to: '/workers', label: 'Workers', icon: 'worker' },
+  { kind: 'link', to: '/employers', label: 'Employers', icon: 'building' },
+  { kind: 'link', to: '/categories', label: 'Categories', icon: 'category' },
+  { kind: 'link', to: '/agents', label: 'Agents', icon: 'agent' },
+  { kind: 'link', to: '/jobs', label: 'Jobs & Tasks', icon: 'briefcase' },
+  { kind: 'link', to: '/penalties', label: 'Penalties', icon: 'fine' },
+  { kind: 'payments' },
+  { kind: 'link', to: '/analytics', label: 'Analytics', icon: 'chart' },
+  { kind: 'link', to: '/fraud', label: 'Fraud Control', icon: 'shield' },
 ]
 
 const iconSvg = (name) => {
@@ -72,6 +86,57 @@ const iconSvg = (name) => {
   }
 }
 
+function PaymentsSidebarGroup({ onNavigate }) {
+  const location = useLocation()
+  const onPayments = location.pathname.startsWith('/payments')
+  const activeSection = paymentsSectionFromPath(location.pathname)
+  const [open, setOpen] = useState(onPayments)
+
+  useEffect(() => {
+    if (onPayments) setOpen(true)
+  }, [onPayments])
+
+  return (
+    <div className={`sidebar-group${onPayments ? ' sidebar-group--on-route' : ''}`}>
+      <button
+        type="button"
+        className="sidebar-group-header"
+        aria-expanded={open}
+        aria-controls="sidebar-payments-subnav"
+        id="sidebar-payments-trigger"
+        onClick={() => setOpen((o) => !o)}
+      >
+        {iconSvg('payment')}
+        <span>Payments</span>
+        <svg className="sidebar-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      <div
+        id="sidebar-payments-subnav"
+        className="sidebar-group-children"
+        hidden={!open}
+        role="group"
+        aria-labelledby="sidebar-payments-trigger"
+      >
+        {PAYMENT_SIDEBAR_CHILDREN.map(({ to, section, label }) => {
+          const active = onPayments && activeSection === section
+          return (
+            <Link
+              key={section}
+              to={to}
+              onClick={onNavigate}
+              className={`sidebar-sublink${active ? ' active' : ''}`}
+            >
+              {label}
+            </Link>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function MainLayout() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -118,17 +183,23 @@ export default function MainLayout() {
         </div>
         <p className="sidebar-subtitle">Super Admin Dashboard</p>
         <nav className="sidebar-nav">
-          {SIDEBAR_LINKS.map(({ to, label, icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              onClick={closeSidebar}
-              className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-            >
-              {iconSvg(icon)}
-              <span>{label}</span>
-            </NavLink>
-          ))}
+          {SIDEBAR_ENTRIES.map((entry) => {
+            if (entry.kind === 'payments') {
+              return <PaymentsSidebarGroup key="sidebar-payments" onNavigate={closeSidebar} />
+            }
+            const { to, label, icon } = entry
+            return (
+              <NavLink
+                key={to}
+                to={to}
+                onClick={closeSidebar}
+                className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+              >
+                {iconSvg(icon)}
+                <span>{label}</span>
+              </NavLink>
+            )
+          })}
         </nav>
         <div className="sidebar-footer">
           <p className="sidebar-version">v2.4.1 (Build 1024)</p>

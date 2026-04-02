@@ -105,6 +105,89 @@
   opacity: 0.8;
 }
 
+/* Payments: expandable sub-nav */
+.sidebar-group {
+  margin-bottom: 2px;
+}
+
+.sidebar-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--sidebar-text);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.sidebar-group-header:hover {
+  background: var(--sidebar-bg-hover);
+}
+
+.sidebar-group-header:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.55);
+  outline-offset: 2px;
+}
+
+.sidebar-sublink:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.55);
+  outline-offset: -2px;
+}
+
+.sidebar-group--on-route .sidebar-group-header {
+  background: var(--sidebar-active);
+}
+
+.sidebar-group-header .sidebar-arrow {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.sidebar-group-header[aria-expanded="false"] .sidebar-arrow {
+  transform: rotate(-90deg);
+}
+
+.sidebar-group-children {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0.2rem 0 0.4rem;
+}
+
+.sidebar-group-children[hidden] {
+  display: none !important;
+}
+
+.sidebar-sublink {
+  display: block;
+  padding: 0.5rem 1rem 0.5rem 2.75rem;
+  border-radius: 8px;
+  color: var(--sidebar-text-muted);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.3;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar-sublink:hover {
+  background: var(--sidebar-bg-hover);
+  color: var(--sidebar-text);
+}
+
+.sidebar-sublink.active {
+  background: var(--sidebar-active);
+  color: var(--sidebar-text);
+}
+
 .sidebar-footer {
   padding: 1rem 1.25rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -125,6 +208,8 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  /* Let wide tables scroll inside the content area instead of expanding past the viewport (clips with body overflow-x) */
+  min-width: 0;
 }
 
 .admin-header {
@@ -318,6 +403,7 @@
 .admin-content {
   flex: 1;
   padding: 1.5rem;
+  min-width: 0;
 }
 
 /* ----- Responsive: sidebar toggle (mobile) ----- */
