@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { jobsApi, employersApi, skillsApi } from '../services/api'
 import { JOB_STATUS, JOB_STATUS_OPTIONS, jobStatusLabel, jobStatusBadgeClass } from '../constants/jobEnums'
+import { effectiveWorkerTarget } from '../utils/jobListingForm'
 import { WORK_TYPE_OPTIONS } from '../constants/jobEnums'
 import { getErrorMessage } from '../utils/format'
 import {
@@ -172,6 +173,7 @@ export default function Jobs() {
   const totalPending = jobs.filter((j) => j.status === JOB_STATUS.PENDING).length
   const totalLive = jobs.filter((j) => j.status === JOB_STATUS.LIVE).length
   const totalClosed = jobs.filter((j) => j.status === JOB_STATUS.CLOSED).length
+  const totalListingExpired = jobs.filter((j) => j.status === JOB_STATUS.LISTING_EXPIRED).length
 
   const statusOptions = JOB_STATUS_OPTIONS
   const workTypeOptions = [{ value: '', label: 'All work types' }, ...WORK_TYPE_OPTIONS.filter((o) => o.value)]
@@ -190,6 +192,7 @@ export default function Jobs() {
         <SummaryCard value={totalPending} label="Pending Approval" meta="Needs review" metaVariant="warning" />
         <SummaryCard value={totalLive} label="Active Jobs" meta="Currently running" metaVariant="positive" />
         <SummaryCard value={totalClosed} label="Closed" />
+        <SummaryCard value={totalListingExpired} label="Listing expired" meta="On this page" />
       </div>
 
       <SearchToolbar
@@ -274,7 +277,15 @@ export default function Jobs() {
                   <td>{formatSalary(j)}</td>
                   <td>{j.workType || '—'}</td>
                   <td><span className={`mgmt-badge ${jobStatusBadgeClass(j.status)}`}>{jobStatusLabel(j.status)}</span></td>
-                  <td>{j.workersRequired ?? '—'} / {j.workersAssigned ?? 0}</td>
+                  <td>
+                    <span>{j.workersAssigned ?? 0} / {effectiveWorkerTarget(j)}</span>
+                    {j.hiringClosed && (
+                      <span className="mgmt-badge badge-secondary" style={{ marginLeft: '0.35rem', fontSize: '0.65rem' }} title="Employer stopped further hiring">
+                        Hiring closed
+                      </span>
+                    )}
+                    <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>posted {j.workersRequired ?? '—'}</div>
+                  </td>
                   <td>{formatPosted(j)}</td>
                   <td>
                     <div className="mgmt-actions-cell">

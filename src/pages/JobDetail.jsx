@@ -10,6 +10,11 @@ import {
   penaltyPayerLabel,
 } from '../constants/penaltyEnums'
 import { getErrorMessage, formatAdminDate, formatAdminDateTime } from '../utils/format'
+import {
+  LISTING_ENDS_HELP_TEXT,
+  effectiveWorkerTarget,
+  buildListingEndsAtPayload,
+} from '../utils/jobListingForm'
 import { PageHeader, Alert, Button } from '../components/ui'
 import JobForm from '../components/JobForm'
 import ConfirmModal from '../components/ConfirmModal'
@@ -194,6 +199,11 @@ export default function JobDetail() {
   const [penaltyWaiveTarget, setPenaltyWaiveTarget] = useState(null)
   const [penaltyWaiveNote, setPenaltyWaiveNote] = useState('')
   const [penaltyActionLoading, setPenaltyActionLoading] = useState(false)
+  const [hiringActionLoading, setHiringActionLoading] = useState(false)
+  const [reactivateOpen, setReactivateOpen] = useState(false)
+  const [reactivateDate, setReactivateDate] = useState('')
+  const [reactivateTime, setReactivateTime] = useState('')
+  const [reactivateSubmitting, setReactivateSubmitting] = useState(false)
 
   const loadPenalties = useCallback(() => {
     if (!jobId) return
@@ -444,6 +454,69 @@ export default function JobDetail() {
     }
   }
 
+  const handleStopHiring = async () => {
+    if (!employerId) return
+    setHiringActionLoading(true)
+    setError('')
+    try {
+      const res = await jobsApi.action(jobId, 'stop-hiring', { employerId })
+      setJob((res?.data ?? res) || job)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Stop hiring failed'))
+    } finally {
+      setHiringActionLoading(false)
+    }
+  }
+
+  const handleResumeHiring = async () => {
+    if (!employerId) return
+    setHiringActionLoading(true)
+    setError('')
+    try {
+      const res = await jobsApi.action(jobId, 'resume-hiring', { employerId })
+      setJob((res?.data ?? res) || job)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Resume hiring failed'))
+    } finally {
+      setHiringActionLoading(false)
+    }
+  }
+
+  const openReactivateModal = () => {
+    const t = new Date()
+    t.setDate(t.getDate() + 1)
+    const y = t.getFullYear()
+    const m = String(t.getMonth() + 1).padStart(2, '0')
+    const d = String(t.getDate()).padStart(2, '0')
+    setReactivateDate(`${y}-${m}-${d}`)
+    setReactivateTime('')
+    setReactivateOpen(true)
+  }
+
+  const handleReactivateSubmit = async () => {
+    if (!employerId) return
+    const listingEndsAt = buildListingEndsAtPayload(reactivateDate, reactivateTime)
+    if (!listingEndsAt) {
+      setError('Choose a listing end date')
+      return
+    }
+    setReactivateSubmitting(true)
+    setError('')
+    try {
+      const res = await jobsApi.update(jobId, {
+        employerId,
+        status: JOB_STATUS.LIVE,
+        listingEndsAt,
+      })
+      setJob((res?.data ?? res) || job)
+      setReactivateOpen(false)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Reactivate listing failed'))
+    } finally {
+      setReactivateSubmitting(false)
+    }
+  }
+
   const handlePayServiceCharge = async () => {
     if (!employerId) return
     setPayScLoading(true)
@@ -524,7 +597,20 @@ export default function JobDetail() {
   const canEdit = true
   const isLive = job?.status === JOB_STATUS.LIVE
   const isHired = job?.status === 'HIRED'
+  const isListingExpired = job?.status === JOB_STATUS.LISTING_EXPIRED
   const isInactiveUnpaid = job?.status === 'INACTIVE_PENDING_PAYMENT'
+  const slotTarget = job ? effectiveWorkerTarget(job) : 1
+  const canStopHiring =
+    !!employerId &&
+    (isLive || isHired) &&
+    !job?.hiringClosed &&
+    (job?.workersAssigned || 0) >= 1
+  const canResumeHiring = !!employerId && !!job?.hiringClosed
+  const canReactivateListing =
+    !!employerId &&
+    isListingExpired &&
+    (job?.workersAssigned || 0) === 0 &&
+    assignedWorkers.length === 0
 
   const salaryDisplay = job?.perDayPayout != null
     ? `₹${Number(job.perDayPayout).toLocaleString('en-IN')}/day`
@@ -562,8 +648,12 @@ export default function JobDetail() {
           <span className="job-view-stat-label">Salary</span>
         </div>
         <div className="job-view-stat">
-          <span className="job-view-stat-value">{job?.workersRequired ?? '—'} / {job?.workersAssigned ?? 0}</span>
-          <span className="job-view-stat-label">Workers required / assigned</span>
+          <span className="job-view-stat-value">{job?.workersAssigned ?? 0} / {slotTarget}</span>
+          <span className="job-view-stat-label">Assigned / hire target{job?.workersCommitted != null ? ' (committed)' : ''}</span>
+        </div>
+        <div className="job-view-stat">
+          <span className="job-view-stat-value">{job?.workersRequired ?? '—'}</span>
+          <span className="job-view-stat-label">Posted workers required</span>
         </div>
         <div className="job-view-stat">
           <span className="job-view-stat-value">{job?.workType || '—'}</span>
@@ -577,6 +667,21 @@ export default function JobDetail() {
         {canReject && <Button variant="secondary" onClick={() => handleSetStatus(JOB_STATUS.REJECTED)} disabled={statusLoading}>Reject</Button>}
         {canGoLive && <Button variant="primary" onClick={() => handleSetStatus(JOB_STATUS.LIVE)} disabled={statusLoading}>Go Live</Button>}
         {canClose && <Button variant="secondary" onClick={() => handleSetStatus(JOB_STATUS.CLOSED)} disabled={statusLoading}>Close</Button>}
+        {canReactivateListing && (
+          <Button variant="primary" onClick={openReactivateModal}>
+            Reactivate listing
+          </Button>
+        )}
+        {canStopHiring && (
+          <Button variant="secondary" onClick={handleStopHiring} disabled={hiringActionLoading}>
+            {hiringActionLoading ? '…' : 'Stop further hiring'}
+          </Button>
+        )}
+        {canResumeHiring && (
+          <Button variant="secondary" onClick={handleResumeHiring} disabled={hiringActionLoading}>
+            {hiringActionLoading ? '…' : 'Resume hiring'}
+          </Button>
+        )}
         <Button variant="danger" onClick={() => setDeleteOpen(true)}>Delete</Button>
       </div>
 
@@ -717,6 +822,26 @@ export default function JobDetail() {
             <span className="view-label">Workers assigned</span>
             <span className="view-value">{job?.workersAssigned ?? '—'}</span>
           </div>
+          <div className="view-row">
+            <span className="view-label">Hire target (effective)</span>
+            <span className="view-value">{slotTarget}</span>
+          </div>
+          {job?.workersCommitted != null && (
+            <div className="view-row">
+              <span className="view-label">Workers committed</span>
+              <span className="view-value">{job.workersCommitted} (stop-hiring snapshot)</span>
+            </div>
+          )}
+          <div className="view-row">
+            <span className="view-label">Further hiring</span>
+            <span className="view-value">{job?.hiringClosed ? 'Closed — no new applies / hires' : 'Open'}</span>
+          </div>
+          {job?.listingEndsAt && (
+            <div className="view-row">
+              <span className="view-label">Listing ends (IST)</span>
+              <span className="view-value">{formatAdminDateTime(job.listingEndsAt)}</span>
+            </div>
+          )}
         </section>
 
         <section className="job-view-card job-view-card-full">
@@ -852,6 +977,11 @@ export default function JobDetail() {
         {isLive && employerId && (
           <section className="job-view-card job-view-card-full">
             <h3 className="view-section-title">Applicants</h3>
+            {job?.hiringClosed && (
+              <Alert variant="warning" className="mgmt-alert" style={{ marginBottom: '0.75rem' }}>
+                Employer closed further hiring — backend blocks new applications and hires. Use “Resume hiring” to reopen (if allowed).
+              </Alert>
+            )}
             <p className="view-detail-section-subtitle" style={{ marginTop: '-0.5rem' }}>
               Workers who applied for this job. Load the list and hire or reject.
             </p>
@@ -899,7 +1029,7 @@ export default function JobDetail() {
                               '—'
                             ) : (
                               <div className="mgmt-actions-cell">
-                                <Button variant="primary" onClick={() => handleHire(wid)} disabled={hireLoading} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>
+                                <Button variant="primary" onClick={() => handleHire(wid)} disabled={hireLoading || !!job?.hiringClosed} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>
                                   {hireLoading ? '…' : 'Hire'}
                                 </Button>
                                 <Button variant="danger" onClick={() => handleReject(wid)} disabled={rejectLoading} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>
@@ -974,8 +1104,15 @@ export default function JobDetail() {
           <p className="view-detail-section-subtitle" style={{ marginTop: '-0.5rem', marginBottom: '0.75rem' }}>
             Assign or remove workers. If someone is <strong>hired</strong>, removing them runs the employer penalty flow (same as employer “remove hire” in the app); legacy assign-only rows can be removed without a penalty.
           </p>
+          {job?.hiringClosed && (
+            <Alert variant="warning" className="mgmt-alert" style={{ marginBottom: '0.75rem' }}>
+              Hiring is closed — assign may fail until employer resumes hiring.
+            </Alert>
+          )}
           <div style={{ marginBottom: '0.75rem' }}>
-            <Button variant="primary" onClick={handleAssignOpen}>Assign worker</Button>
+            <Button variant="primary" onClick={handleAssignOpen} disabled={!!job?.hiringClosed}>
+              Assign worker
+            </Button>
           </div>
           {assignedWorkers.length === 0 ? (
             <p className="view-value" style={{ color: '#6b7280', fontSize: '0.9375rem' }}>No workers assigned yet.</p>
@@ -1117,6 +1254,37 @@ export default function JobDetail() {
           loading={penaltyActionLoading}
           variant="primary"
         />
+      )}
+
+      {reactivateOpen && (
+        <div className="modal-backdrop" onClick={() => !reactivateSubmitting && setReactivateOpen(false)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
+            <div className="modal-header">
+              <h2 className="modal-title">Reactivate listing</h2>
+              <button type="button" className="modal-close" onClick={() => !reactivateSubmitting && setReactivateOpen(false)} aria-label="Close">&times;</button>
+            </div>
+            <div className="modal-body">
+              <p className="view-value" style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+                Sets job to <strong>Live</strong> with a new public listing end. Only when there are no hired workers.
+              </p>
+              <p className="view-value" style={{ fontSize: '0.8125rem', marginBottom: '0.75rem' }}>{LISTING_ENDS_HELP_TEXT}</p>
+              <label className="modal-label">
+                Listing end date *
+                <input type="date" value={reactivateDate} onChange={(e) => setReactivateDate(e.target.value)} className="modal-input" required />
+              </label>
+              <label className="modal-label">
+                Listing end time (optional)
+                <input type="time" value={reactivateTime} onChange={(e) => setReactivateTime(e.target.value)} className="modal-input" />
+              </label>
+              <div className="modal-actions" style={{ marginTop: '1rem' }}>
+                <button type="button" className="modal-btn secondary" onClick={() => setReactivateOpen(false)} disabled={reactivateSubmitting}>Cancel</button>
+                <button type="button" className="modal-btn primary" onClick={handleReactivateSubmit} disabled={reactivateSubmitting}>
+                  {reactivateSubmitting ? 'Saving…' : 'Reactivate'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {penaltyWaiveTarget && (

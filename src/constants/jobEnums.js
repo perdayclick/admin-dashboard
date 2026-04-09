@@ -11,6 +11,8 @@ export const JOB_STATUS = {
   INACTIVE_PENDING_PAYMENT: 'INACTIVE_PENDING_PAYMENT',
   CLOSED: 'CLOSED',
   DISABLED: 'DISABLED',
+  /** Public listing ended (time passed, no hires); employer may reactivate via app */
+  LISTING_EXPIRED: 'LISTING_EXPIRED',
 }
 
 /** Admin actions: Approve/Reject set status to APPROVED or REJECTED; then only LIVE or CLOSED allowed */
@@ -37,6 +39,7 @@ export const JOB_STATUS_OPTIONS = [
   { value: JOB_STATUS.INACTIVE_PENDING_PAYMENT, label: 'Pending payment' },
   { value: JOB_STATUS.CLOSED, label: 'Closed' },
   { value: JOB_STATUS.DISABLED, label: 'Disabled' },
+  { value: JOB_STATUS.LISTING_EXPIRED, label: 'Listing expired' },
 ]
 
 export const WORK_TYPE = {
@@ -127,6 +130,7 @@ export function jobStatusLabel(s) {
     CANCELLED: 'Cancelled',
     INACTIVE_PENDING_PAYMENT: 'Pending payment',
     DISABLED: 'Disabled',
+    LISTING_EXPIRED: 'Listing expired',
   }
   return map[s] || s || '—'
 }
@@ -141,5 +145,6 @@ export function jobStatusBadgeClass(s) {
   if (s === 'INACTIVE_PENDING_PAYMENT') return 'badge-warning'
   if (s === 'CANCELLED') return 'badge-secondary'
   if (s === 'DISABLED') return 'badge-danger'
+  if (s === 'LISTING_EXPIRED') return 'badge-secondary'
   return 'badge-warning'
 }

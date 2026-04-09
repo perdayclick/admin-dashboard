@@ -1,4 +1,6 @@
 import { jobStatusLabel, jobStatusBadgeClass } from '../constants/jobEnums'
+import { formatAdminDateTime } from '../utils/format'
+import { effectiveWorkerTarget } from '../utils/jobListingForm'
 import './Modal.css'
 
 function formatDate(v) {
@@ -57,6 +59,26 @@ export default function JobView({ job, onClose }) {
               <span className="view-label">Workers assigned</span>
               <span className="view-value">{job?.workersAssigned ?? '—'}</span>
             </div>
+            <div className="view-row">
+              <span className="view-label">Effective hire target</span>
+              <span className="view-value">{job ? effectiveWorkerTarget(job) : '—'} {job?.workersCommitted != null ? '(committed)' : '(posted)'}</span>
+            </div>
+            {job?.listingEndsAt && (
+              <div className="view-row">
+                <span className="view-label">Listing ends (IST)</span>
+                <span className="view-value">{formatAdminDateTime(job.listingEndsAt)}</span>
+              </div>
+            )}
+            <div className="view-row">
+              <span className="view-label">Further hiring</span>
+              <span className="view-value">{job?.hiringClosed ? 'Closed by employer' : 'Open'}</span>
+            </div>
+            {job?.workersCommitted != null && (
+              <div className="view-row">
+                <span className="view-label">Workers committed (stop-hiring)</span>
+                <span className="view-value">{job.workersCommitted}</span>
+              </div>
+            )}
             <div className="view-row">
               <span className="view-label">Salary / payout (₹)</span>
               <span className="view-value">{job?.salaryOrPayout ?? '—'}</span>

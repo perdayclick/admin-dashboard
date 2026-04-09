@@ -5,6 +5,11 @@ import {
   SHIFT_TYPE_OPTIONS,
   CHECK_IN_METHOD_OPTIONS,
 } from '../constants/jobEnums'
+import {
+  LISTING_ENDS_HELP_TEXT,
+  listingEndsAtToFormParts,
+  buildListingEndsAtPayload,
+} from '../utils/jobListingForm'
 import './Modal.css'
 
 export default function JobForm({ title, job, employers = [], skills = [], onSubmit, onClose, error, submitting, mode }) {
@@ -31,6 +36,8 @@ export default function JobForm({ title, job, employers = [], skills = [], onSub
   const [perDayPayout, setPerDayPayout] = useState('')
   const [checkInMethod, setCheckInMethod] = useState('')
   const [reportingTime, setReportingTime] = useState('')
+  const [listingEndDate, setListingEndDate] = useState('')
+  const [listingEndTime, setListingEndTime] = useState('')
 
   useEffect(() => {
     if (job) {
@@ -58,11 +65,18 @@ export default function JobForm({ title, job, employers = [], skills = [], onSub
       setPerDayPayout(job.perDayPayout ?? '')
       setCheckInMethod(job.checkInMethod || '')
       setReportingTime(job.reportingTime || '')
+      const le = listingEndsAtToFormParts(job.listingEndsAt)
+      setListingEndDate(le.date)
+      setListingEndTime(le.time)
+    } else {
+      setListingEndDate('')
+      setListingEndTime('')
     }
   }, [job])
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    const listingEndsAt = buildListingEndsAtPayload(listingEndDate, listingEndTime)
     const payload = {
       jobTitle: jobTitle.trim(),
       jobDescription: jobDescription.trim() || undefined,
@@ -88,6 +102,15 @@ export default function JobForm({ title, job, employers = [], skills = [], onSub
       reportingTime: reportingTime.trim() || undefined,
     }
     if (mode === 'create' && employerId) payload.employerId = employerId
+    if (mode === 'create') {
+      payload.listingEndsAt = listingEndsAt
+    } else if (listingEndsAt) {
+      payload.listingEndsAt = listingEndsAt
+    }
+    if (mode === 'edit' && job) {
+      const eid = job.employerId?._id || job.employerId
+      if (eid) payload.employerId = eid
+    }
     onSubmit(payload)
   }
 
@@ -143,6 +166,31 @@ export default function JobForm({ title, job, employers = [], skills = [], onSub
             <label className="modal-label">
               Duration
               <input type="text" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="e.g. 3 months" className="modal-input" />
+            </label>
+          </section>
+          <section className="modal-section">
+            <h3 className="modal-section-title">Public listing end</h3>
+            <p className="view-value" style={{ fontSize: '0.8125rem', color: '#6b7280', margin: '0 0 0.75rem' }}>
+              {LISTING_ENDS_HELP_TEXT}
+            </p>
+            <label className="modal-label">
+              Listing end date {mode === 'create' ? '*' : '(optional — leave empty to keep current)'}
+              <input
+                type="date"
+                value={listingEndDate}
+                onChange={(e) => setListingEndDate(e.target.value)}
+                required={mode === 'create'}
+                className="modal-input"
+              />
+            </label>
+            <label className="modal-label">
+              Listing end time (optional)
+              <input
+                type="time"
+                value={listingEndTime}
+                onChange={(e) => setListingEndTime(e.target.value)}
+                className="modal-input"
+              />
             </label>
           </section>
           <section className="modal-section">

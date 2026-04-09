@@ -10,6 +10,7 @@ export function jobStatusLabel(status) {
     INACTIVE_PENDING_PAYMENT: 'Cancelled — service charge due',
     CLOSED: 'Closed',
     REJECTED: 'Rejected (admin)',
+    LISTING_EXPIRED: 'Listing expired (not visible in nearby)',
   }
   return map[status] || status || '—'
 }
@@ -21,6 +22,7 @@ export function jobCompletedSummary(status) {
   if (status === 'CLOSED' || status === 'REJECTED') return { text: 'No — closed/rejected', variant: 'muted' }
   if (status === 'LIVE' || status === 'PENDING' || status === 'APPROVED') return { text: 'In progress (not finished)', variant: 'info' }
   if (status === 'HIRED') return { text: 'In progress (hired)', variant: 'info' }
+  if (status === 'LISTING_EXPIRED') return { text: 'No — listing expired (no hires)', variant: 'muted' }
   return { text: '—', variant: 'muted' }
 }
 
