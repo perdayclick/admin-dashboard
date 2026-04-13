@@ -271,9 +271,22 @@ export const paymentApi = {
     if (params.limit) sp.set('limit', params.limit)
     if (params.status) sp.set('status', params.status)
     if (params.payoutStatus) sp.set('payoutStatus', params.payoutStatus)
+    if (params.paymentType) sp.set('paymentType', params.paymentType)
     if (params.startDate) sp.set('startDate', params.startDate)
     if (params.endDate) sp.set('endDate', params.endDate)
     if (params.jobId) sp.set('jobId', params.jobId)
+    if (params.payerUserId) sp.set('payerUserId', params.payerUserId)
+    if (params.workerId) sp.set('workerId', params.workerId)
+    if (params.jobEarningsOnly === true || params.jobEarningsOnly === 'true' || params.jobEarningsOnly === '1') {
+      sp.set('jobEarningsOnly', 'true')
+    }
+    if (params.groupByJob === true || params.groupByJob === 'true' || params.groupByJob === '1') {
+      sp.set('groupByJob', 'true')
+    }
+    if (params.search && String(params.search).trim()) sp.set('search', String(params.search).trim())
+    if (params.disputeStatus && String(params.disputeStatus).trim()) {
+      sp.set('disputeStatus', String(params.disputeStatus).trim())
+    }
     const q = sp.toString()
     return apiRequest(`/api/payment/admin/all${q ? `?${q}` : ''}`)
   },

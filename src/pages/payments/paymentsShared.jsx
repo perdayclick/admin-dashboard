@@ -27,6 +27,47 @@ export function formatCurrency(val) {
   return Number.isFinite(n) ? `₹${n.toLocaleString('en-IN')}` : '—'
 }
 
+/** Table-style rupees with 2 decimals */
+export function formatCurrencyTable(val) {
+  if (val == null || val === '') return '—'
+  const n = Number(val)
+  return Number.isFinite(n)
+    ? `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : '—'
+}
+
+/** Human-readable payment ref (PAY-YYYY-XXXX — last 4 hex chars of Mongo id). */
+export function formatPaymentDisplayId(payment) {
+  const id = payment?._id != null ? String(payment._id) : ''
+  if (id.length !== 24) return id || '—'
+  const created = payment?.createdAt ? new Date(payment.createdAt) : new Date()
+  const y = created.getFullYear()
+  const tail = id.slice(-4).toUpperCase()
+  return `PAY-${y}-${tail}`
+}
+
+export function formatJobDisplayId(jobOrId) {
+  if (!jobOrId) return '—'
+  const id = typeof jobOrId === 'object' && jobOrId._id != null ? String(jobOrId._id) : String(jobOrId)
+  if (id.length !== 24) return `JOB-${id.slice(0, 8)}`
+  const created = jobOrId?.createdAt ? new Date(jobOrId.createdAt) : new Date()
+  const y = created.getFullYear()
+  const tail = id.slice(-4).toUpperCase()
+  return `JOB-${y}-${tail}`
+}
+
+export function feePercentLabel(payment) {
+  const job = payment?.jobId
+  const pct = job && typeof job === 'object' && job.platformFeePercent != null
+    ? Number(job.platformFeePercent)
+    : null
+  if (pct != null && Number.isFinite(pct)) return `${Math.round(pct)}%`
+  const amt = Number(payment?.amount) || 0
+  const fee = Number(payment?.platformFee) || 0
+  if (amt <= 0 || fee <= 0) return '—'
+  return `${Math.round((fee / amt) * 100)}%`
+}
+
 export function formatFeePercentOfCollected(pct) {
   if (pct == null || Number.isNaN(Number(pct))) return null
   const n = Number(pct)
