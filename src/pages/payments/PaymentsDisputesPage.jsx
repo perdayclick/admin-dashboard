@@ -1,27 +1,72 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import {
-  DISPUTE_QUEUE_FILTER_OPTIONS,
-  formatDisputeReason,
-} from '../../constants/paymentEnums'
-import {
-  SearchToolbar,
-  DataTable,
-  TableEmptyRow,
-  Pagination,
-} from '../../components/ui'
+import { DISPUTE_QUEUE_FILTER_OPTIONS, formatDisputeReason } from '../../constants/paymentEnums'
+import { SearchToolbar, Pagination, Avatar } from '../../components/ui'
 import { formatAdminDateTime } from '../../utils/format'
 import { usePaymentsAdmin } from './PaymentsAdminContext'
 import {
-  DisputeQueueStatusBadge,
-  disputeRaisedByLabel,
-  formatCurrency,
+  formatCurrencyTable,
+  formatJobDisplayId,
+  formatPaymentDisplayId,
   normalizeDisputeStatus,
 } from './paymentsShared'
+import './paymentsHubV2.css'
+
+function jobLocationLine(job) {
+  if (!job || typeof job !== 'object') return '—'
+  const loc = job.location
+  if (loc && typeof loc === 'object') {
+    const parts = [loc.locality, loc.address, loc.landmark].filter(Boolean)
+    return parts.length ? parts.join(', ') : '—'
+  }
+  return '—'
+}
+
+function employerNameFromJob(job) {
+  const emp = job?.employerId
+  if (emp && typeof emp === 'object') return emp.businessName || emp.companyName || '—'
+  return '—'
+}
+
+/** Short label for inbox + detail subtitle */
+function raisedByShortLabel(p) {
+  if (p?.dispute?.reason === 'worker_denied_cash_receipt') return 'Raised by worker'
+  return 'Raised by employer'
+}
+
+function raisedByAvatarName(p) {
+  if (p?.dispute?.reason === 'worker_denied_cash_receipt') {
+    const w = p.workerId
+    return w?.fullName || w?.phoneNumber || 'Worker'
+  }
+  return p.user?.name || p.user?.phone || 'Employer'
+}
+
+function evidenceFileName(url) {
+  try {
+    const u = String(url).split('?')[0]
+    const seg = u.split('/').pop()
+    return seg || 'File'
+  } catch {
+    return 'File'
+  }
+}
+
+function isLikelyImageUrl(url) {
+  return /\.(jpe?g|png|gif|webp|bmp|svg)(\?|$)/i.test(String(url))
+}
+
+function ClockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l4 2" />
+    </svg>
+  )
+}
 
 export default function PaymentsDisputesPage() {
   const {
-    navigate,
     stats: s,
     statsLoading,
     statsError,
@@ -42,7 +87,11 @@ export default function PaymentsDisputesPage() {
     fetchDisputeList,
     setDisputeModal,
     openDisputeNotesEditor,
+    disputeResolutionNotes,
+    setDisputeResolutionNotes,
   } = usePaymentsAdmin()
+
+  const [selectedId, setSelectedId] = useState(null)
 
   useEffect(() => {
     fetchDisputeList(disputePagination.page)
@@ -54,40 +103,46 @@ export default function PaymentsDisputesPage() {
     disputeEndDate,
   ])
 
+  useEffect(() => {
+    if (!disputeRows.length) {
+      setSelectedId(null)
+      return
+    }
+    setSelectedId((prev) => {
+      if (prev && disputeRows.some((r) => String(r._id) === String(prev))) return prev
+      return disputeRows[0]._id
+    })
+  }, [disputeRows])
+
+  useEffect(() => {
+    setDisputeResolutionNotes('')
+  }, [selectedId, setDisputeResolutionNotes])
+
+  const selected = useMemo(
+    () => disputeRows.find((r) => String(r._id) === String(selectedId)) || null,
+    [disputeRows, selectedId]
+  )
+
   const openCount = s?.disputes?.open ?? 0
-  const totalFiltered = disputeListLoading ? null : disputePagination.total
+  const disputeSt = selected ? normalizeDisputeStatus(selected) : null
+  const isOpen = disputeSt === 'open'
 
   return (
-    <div className="payments-page payments-disputes">
-      <header className="payments-disputes__hero">
-        <div className="payments-disputes__hero-main">
-          <p className="payments-disputes__eyebrow">Finance · Disputes</p>
-          <div className="payments-disputes__hero-row">
-            <h1 className="payments-disputes__title">Dispute queue</h1>
-            {!statsLoading && openCount > 0 && (
-              <span className="payments-disputes__open-pill" title="Open disputes across the platform">
-                {openCount.toLocaleString('en-IN')} open
-              </span>
-            )}
-          </div>
-          <p className="payments-disputes__lede">
-            Review raised cases, evidence, and outcomes. Resolving applies to <strong>every open payment line</strong> for the same job.
-            Payout retries and cron controls live under{' '}
-            <NavLink to="/payments/payouts" className="payments-disputes__link">Payouts &amp; cron</NavLink>
-            ; row-level payments in{' '}
-            <NavLink to="/payments/transactions" className="payments-disputes__link">Transactions</NavLink>.
-          </p>
+    <div className="ph2-page payments-disputes-v2">
+      <header className="ph2-hero" style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1 className="ph2-title">Disputes management</h1>
+          <p className="ph2-sub">Review and resolve payment disputes — payouts stay frozen until resolved.</p>
         </div>
-        <div className="payments-disputes__hero-actions">
-          <button
-            type="button"
-            className="payments-disputes__btn-ghost"
-            onClick={() => fetchStats()}
-            disabled={statsLoading}
-          >
-            {statsLoading ? 'Updating summary…' : '↻ Refresh summary'}
-          </button>
-        </div>
+        <button
+          type="button"
+          className="payments-disputes__btn-ghost"
+          onClick={() => fetchStats()}
+          disabled={statsLoading}
+          style={{ alignSelf: 'flex-start' }}
+        >
+          {statsLoading ? 'Updating…' : '↻ Refresh summary'}
+        </button>
       </header>
 
       {statsError && (
@@ -96,63 +151,19 @@ export default function PaymentsDisputesPage() {
         </p>
       )}
 
-      <section className="payments-disputes__metrics" aria-label="Dispute totals from dashboard">
-        <article className="payments-disputes__metric payments-disputes__metric--open">
-          <span className="payments-disputes__metric-label">Open</span>
-          <span className="payments-disputes__metric-value">
-            {statsLoading ? '…' : openCount.toLocaleString('en-IN')}
-          </span>
-          <span className="payments-disputes__metric-hint">Needs a decision</span>
-        </article>
-        <article className="payments-disputes__metric">
-          <span className="payments-disputes__metric-label">Resolved → worker</span>
-          <span className="payments-disputes__metric-value">
-            {statsLoading ? '…' : (s?.disputes?.resolved_worker ?? 0).toLocaleString('en-IN')}
-          </span>
-          <span className="payments-disputes__metric-hint">Payout released</span>
-        </article>
-        <article className="payments-disputes__metric">
-          <span className="payments-disputes__metric-label">Resolved → employer</span>
-          <span className="payments-disputes__metric-value">
-            {statsLoading ? '…' : (s?.disputes?.resolved_employer ?? 0).toLocaleString('en-IN')}
-          </span>
-          <span className="payments-disputes__metric-hint">Refund path</span>
-        </article>
-        <article className="payments-disputes__metric">
-          <span className="payments-disputes__metric-label">Auto-released</span>
-          <span className="payments-disputes__metric-value">
-            {statsLoading ? '…' : (s?.disputes?.auto_released ?? 0).toLocaleString('en-IN')}
-          </span>
-          <span className="payments-disputes__metric-hint">Cron / SLA</span>
-        </article>
-      </section>
-
-      <div className="payments-disputes__tip">
-        <span className="payments-disputes__tip-icon" aria-hidden>✦</span>
-        <p>
-          Use <strong>Resolve dispute</strong> for open rows (modal picks the outcome).
-          <strong> Edit notes</strong> updates audit text only on closed disputes.
-          Actions are in the last column — scroll horizontally on small screens.
-        </p>
-      </div>
-
-      <section className="payments-disputes__panel payments-page__card" aria-labelledby="disputes-filters-heading">
-        <div className="payments-disputes__panel-head">
-          <h2 id="disputes-filters-heading" className="payments-disputes__panel-title">
-            Filters &amp; list
-          </h2>
-          <p className="payments-disputes__panel-meta">
-            {totalFiltered === null ? 'Loading…' : (
-              <>
-                <strong>{totalFiltered.toLocaleString('en-IN')}</strong>
-                {' '}
-                {totalFiltered === 1 ? 'row' : 'rows'}
-                {' '}match this filter
-              </>
-            )}
-          </p>
+      {openCount > 0 && (
+        <div className="ph2-dispute-banner" role="status">
+          <span aria-hidden style={{ fontSize: '1.25rem' }}>⚠️</span>
+          <div>
+            <strong>
+              {openCount.toLocaleString('en-IN')} active dispute{openCount === 1 ? '' : 's'} requiring attention
+            </strong>
+            <p>All related payouts are frozen until admin resolution.</p>
+          </div>
         </div>
+      )}
 
+      <section className="payments-disputes__panel payments-page__card" style={{ marginBottom: 16 }}>
         <SearchToolbar
           searchValue={disputeJobFilter}
           onSearchChange={setDisputeJobFilter}
@@ -161,7 +172,7 @@ export default function PaymentsDisputesPage() {
             setDisputePagination((p) => ({ ...p, page: 1 }))
             fetchDisputeList(1)
           }}
-          searchPlaceholder="Job ID (24 hex) — press Enter to search"
+          searchPlaceholder="Filter by Job ID (24 hex) — Enter"
           filterOptions={DISPUTE_QUEUE_FILTER_OPTIONS}
           filterValue={disputeStatusFilter}
           onFilterChange={(v) => {
@@ -172,8 +183,7 @@ export default function PaymentsDisputesPage() {
           onRefresh={() => fetchDisputeList(disputePagination.page)}
           refreshing={disputeListLoading}
         />
-
-        <div className="payments-disputes__dates">
+        <div className="payments-disputes__dates" style={{ marginTop: 12 }}>
           <label className="payments-disputes__date-field">
             <span className="payments-disputes__date-label">Raised from</span>
             <input
@@ -201,146 +211,220 @@ export default function PaymentsDisputesPage() {
         </div>
       </section>
 
-      <div className="payments-disputes__table-shell">
-        <DataTable loading={disputeListLoading} loadingMessage="Loading disputes…" emptyColSpan={12}>
-          <table className="mgmt-table mgmt-table--sticky-actions payments-disputes__table">
-            <thead>
-              <tr>
-                <th>Dispute</th>
-                <th>Raised</th>
-                <th>Auto-release</th>
-                <th>Reason</th>
-                <th>Amount</th>
-                <th>Job</th>
-                <th>Worker</th>
-                <th>Raised by</th>
-                <th>Type</th>
-                <th>Evidence</th>
-                <th>Admin notes</th>
-                <th className="payments-disputes__th-actions">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {!disputeListLoading && disputeRows.length === 0 && !error && (
-                <TableEmptyRow colSpan={12} message="No disputes match this filter." />
+      {error && <p className="payments-disputes__banner payments-disputes__banner--error">{error}</p>}
+
+      <div className="ph2-dispute-layout">
+        <div className="ph2-dispute-inbox-col">
+          <div className="ph2-dispute-inbox-head">
+            <h2>Dispute inbox</h2>
+            <p className="ph2-muted">
+              {disputeListLoading ? 'Loading…' : `${disputePagination.total.toLocaleString('en-IN')} total disputes`}
+            </p>
+          </div>
+          <div className="ph2-inbox-scroll">
+            <div className="ph2-inbox">
+              {disputeListLoading && <p className="ph2-muted">Loading disputes…</p>}
+              {!disputeListLoading && disputeRows.length === 0 && (
+                <p className="ph2-muted">No disputes match this filter.</p>
               )}
               {disputeRows.map((p) => {
-                const job = p.jobId
-                const jobRef = job && (job._id || job)
-                const jobTitle = job?.jobTitle || '—'
-                const w = p.workerId
-                const wid = w?._id || w
-                const disputeSt = normalizeDisputeStatus(p)
-                const open = disputeSt === 'open'
-                const ev = Array.isArray(p.dispute?.evidence) ? p.dispute.evidence : []
+                const open = normalizeDisputeStatus(p) === 'open'
+                const sel = String(p._id) === String(selectedId)
                 return (
-                  <tr key={p._id} className="payments-disputes__row">
-                    <td>
-                      <DisputeQueueStatusBadge dispute={p.dispute} />
-                    </td>
-                    <td className="payments-disputes__cell-muted payments-disputes__cell-nowrap">
+                  <button
+                    key={p._id}
+                    type="button"
+                    className={`ph2-inbox-card${sel ? ' ph2-inbox-card--sel' : ''}`}
+                    onClick={() => setSelectedId(p._id)}
+                  >
+                    <div className="ph2-inbox-card__top">
+                      <span className="ph2-inbox-id">{formatPaymentDisplayId(p)}</span>
+                      <span className={`ph2-inbox-badge ${open ? 'ph2-inbox-badge--open' : 'ph2-inbox-badge--closed'}`}>
+                        {open ? 'OPEN' : (normalizeDisputeStatus(p) || '—').toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="ph2-inbox-who">
+                      <Avatar nameOrEmail={raisedByAvatarName(p)} />
+                      <span>{raisedByShortLabel(p)}</span>
+                    </div>
+                    <p className="ph2-inbox-snippet">{formatDisputeReason(p.dispute?.reason)}</p>
+                    <div className="ph2-inbox-time">
+                      <ClockIcon />
                       {p.dispute?.raisedAt ? formatAdminDateTime(p.dispute.raisedAt) : '—'}
-                    </td>
-                    <td className="payments-disputes__cell-muted payments-disputes__cell-nowrap payments-disputes__cell-sm">
-                      {open && p.dispute?.autoReleaseAt
-                        ? formatAdminDateTime(p.dispute.autoReleaseAt)
-                        : '—'}
-                    </td>
-                    <td className="payments-disputes__cell-reason">{formatDisputeReason(p.dispute?.reason)}</td>
-                    <td className="payments-disputes__cell-amount">{formatCurrency(p.workerAmount ?? p.amount)}</td>
-                    <td>
-                      {jobRef ? (
-                        <button type="button" className="mgmt-link" onClick={() => navigate(`/jobs/${jobRef}`)}>
-                          {jobTitle}
-                        </button>
-                      ) : (
-                        jobTitle
-                      )}
-                    </td>
-                    <td>
-                      {wid ? (
-                        <button type="button" className="mgmt-link" onClick={() => navigate(`/workers/${wid}`)}>
-                          {w?.fullName || w?.phoneNumber || String(wid).slice(-6)}
-                        </button>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          <div className="ph2-inbox-footer">
+            <Pagination
+              page={disputePagination.page}
+              pages={disputePagination.pages}
+              total={disputePagination.total}
+              limit={disputePagination.limit}
+              onPrevious={() => setDisputePagination((p) => ({ ...p, page: Math.max(1, p.page - 1) }))}
+              onNext={() => setDisputePagination((p) => ({
+                ...p,
+                page: Math.min(p.pages || 1, p.page + 1),
+              }))}
+            />
+          </div>
+        </div>
+
+        <div className="ph2-dispute-detail-wrap">
+          <div className="ph2-detail-scroll">
+            {!selected && <p className="ph2-muted">Select a dispute from the inbox.</p>}
+            {selected && (
+              <div className="ph2-detail-panel">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, color: '#0f172a' }}>
+                      {formatPaymentDisplayId(selected)}
+                    </h2>
+                    <p className="ph2-muted" style={{ margin: '8px 0 0', fontSize: '0.875rem' }}>
+                      {raisedByShortLabel(selected)}
+                      {' '}
+                      ·
+                      {selected.dispute?.raisedAt ? ` ${formatAdminDateTime(selected.dispute.raisedAt)}` : ' —'}
+                    </p>
+                  </div>
+                  <span
+                    className="ph2-detail-header-badge"
+                    style={{
+                      background: isOpen ? '#fef3c7' : '#f1f5f9',
+                      color: isOpen ? '#b45309' : '#475569',
+                    }}
+                  >
+                    {(normalizeDisputeStatus(selected) || '—').toUpperCase()}
+                  </span>
+                </div>
+
+                <h3 style={{ margin: '1.35rem 0 0.5rem', fontSize: '0.9375rem', fontWeight: 700, color: '#0f172a' }}>
+                  Job context
+                </h3>
+                <dl className="ph2-detail-grid">
+                  <div>
+                    <dt>Job ID</dt>
+                    <dd>
+                      {selected.jobId && (selected.jobId._id || selected.jobId) ? (
+                        <NavLink to={`/jobs/${selected.jobId._id || selected.jobId}`} className="ph2-id-link">
+                          {formatJobDisplayId(selected.jobId)}
+                        </NavLink>
                       ) : (
                         '—'
                       )}
-                    </td>
-                    <td className="payments-disputes__cell-sm">{disputeRaisedByLabel(p)}</td>
-                    <td>
-                      <span
-                        className={
-                          p.paymentType === 'CASH'
-                            ? 'payments-disputes__type payments-disputes__type--cash'
-                            : 'payments-disputes__type payments-disputes__type--online'
-                        }
-                      >
-                        {p.paymentType || '—'}
-                      </span>
-                    </td>
-                    <td className="payments-disputes__cell-evidence">
-                      {ev.length === 0 ? '—' : (
-                        <span className="payments-disputes__evidence-list">
-                          {ev.slice(0, 3).map((url) => (
-                            <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="mgmt-link">
-                              Link
-                            </a>
-                          ))}
-                          {ev.length > 3 ? (
-                            <span className="payments-disputes__evidence-more">+{ev.length - 3}</span>
-                          ) : null}
-                        </span>
-                      )}
-                    </td>
-                    <td className="payments-disputes__cell-notes">
-                      {p.dispute?.resolutionNotes ? p.dispute.resolutionNotes : '—'}
-                    </td>
-                    <td>
-                      <div className="mgmt-actions-cell">
-                        {jobRef && (
-                          <button type="button" className="mgmt-action-btn" onClick={() => navigate(`/jobs/${jobRef}`)}>Job</button>
-                        )}
-                        {open && (
-                          <button
-                            type="button"
-                            className="mgmt-action-btn mgmt-action-btn-success"
-                            title="Set dispute outcome (applies to all open rows for this job)"
-                            onClick={() => setDisputeModal({ payment: p, disputeStatus: 'resolved_worker' })}
-                          >
-                            Resolve dispute
-                          </button>
-                        )}
-                        {!open && disputeSt && disputeSt !== 'none' && (
-                          <button
-                            type="button"
-                            className="mgmt-action-btn"
-                            title="Update internal admin notes only"
-                            onClick={() => openDisputeNotesEditor(p)}
-                          >
-                            Edit notes
-                          </button>
-                        )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Location</dt>
+                    <dd>{jobLocationLine(selected.jobId)}</dd>
+                  </div>
+                  <div>
+                    <dt>Employer</dt>
+                    <dd>
+                      <div className="ph2-cell-user">
+                        <Avatar nameOrEmail={employerNameFromJob(selected.jobId)} />
+                        <span className="ph2-cell-name">{employerNameFromJob(selected.jobId)}</span>
                       </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </DataTable>
-      </div>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Worker</dt>
+                    <dd>
+                      <div className="ph2-cell-user">
+                        <Avatar nameOrEmail={selected.workerId?.fullName} />
+                        <span className="ph2-cell-name">{selected.workerId?.fullName || '—'}</span>
+                      </div>
+                    </dd>
+                  </div>
+                </dl>
 
-      <Pagination
-        page={disputePagination.page}
-        pages={disputePagination.pages}
-        total={disputePagination.total}
-        limit={disputePagination.limit}
-        onPrevious={() => setDisputePagination((p) => ({ ...p, page: Math.max(1, p.page - 1) }))}
-        onNext={() => setDisputePagination((p) => ({
-          ...p,
-          page: Math.min(p.pages || 1, p.page + 1),
-        }))}
-      />
+                <div className="ph2-disputed-block">
+                  <p className="ph2-disputed-label">Disputed amount</p>
+                  <p className="ph2-disputed-value">
+                    {formatCurrencyTable(selected.workerAmount ?? selected.amount)}
+                  </p>
+                </div>
+
+                <div className="ph2-reason-box">
+                  <strong>Dispute reason</strong>
+                  {formatDisputeReason(selected.dispute?.reason)}
+                </div>
+
+                {Array.isArray(selected.dispute?.evidence) && selected.dispute.evidence.length > 0 && (
+                  <div style={{ marginTop: '1.15rem' }}>
+                    <h3 style={{ margin: '0 0 0.35rem', fontSize: '0.9375rem', fontWeight: 700, color: '#0f172a' }}>
+                      Evidence submitted
+                    </h3>
+                    <div className="ph2-evidence-row">
+                      {selected.dispute.evidence.map((url) => (
+                        <a
+                          key={url}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ph2-evidence-card"
+                        >
+                          {isLikelyImageUrl(url) ? (
+                            <img src={url} alt="" loading="lazy" />
+                          ) : (
+                            <div className="ph2-evidence-card__doc" aria-hidden>
+                              📄
+                            </div>
+                          )}
+                          <span className="ph2-evidence-card__name">{evidenceFileName(url)}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {isOpen && (
+                  <>
+                    <div className="ph2-admin-resolution">
+                      <label htmlFor="ph2-dispute-resolution-notes">Admin resolution</label>
+                      <textarea
+                        id="ph2-dispute-resolution-notes"
+                        maxLength={2000}
+                        placeholder="Enter detailed resolution notes explaining the decision and any actions taken…"
+                        value={disputeResolutionNotes}
+                        onChange={(e) => setDisputeResolutionNotes(e.target.value)}
+                      />
+                    </div>
+                    <div className="ph2-resolve-btns">
+                      <button
+                        type="button"
+                        className="ph2-btn-resolve-w"
+                        onClick={() => setDisputeModal({ payment: selected, disputeStatus: 'resolved_worker' })}
+                      >
+                        Resolve for worker
+                      </button>
+                      <button
+                        type="button"
+                        className="ph2-btn-resolve-e"
+                        onClick={() => setDisputeModal({ payment: selected, disputeStatus: 'resolved_employer' })}
+                      >
+                        Resolve for employer
+                      </button>
+                    </div>
+                  </>
+                )}
+                {!isOpen && disputeSt && disputeSt !== 'none' && (
+                  <button
+                    type="button"
+                    className="mgmt-action-btn"
+                    style={{ marginTop: 20 }}
+                    onClick={() => openDisputeNotesEditor(selected)}
+                  >
+                    Edit admin notes
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

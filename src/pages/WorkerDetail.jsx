@@ -11,6 +11,7 @@ import {
 } from '../utils/format'
 import { getLatestKycImage, hasAnyKycImages, getAllKycImageItems } from '../utils/kycImages'
 import { PageHeader, Alert, Button } from '../components/ui'
+import { WorkerDetailPaymentHistory } from '../components/DetailPaymentTransactionHistory'
 import KycImageVerificationModal from '../components/KycImageVerificationModal'
 import '../styles/ManagementPage.css'
 
@@ -380,6 +381,8 @@ export default function WorkerDetail() {
             </div>
           </section>
         )}
+
+        {worker?._id && <WorkerDetailPaymentHistory workerId={worker._id} />}
 
         <section className="job-view-card detail-page-jobs-section worker-detail-jobs-bottom">
           <h3 className="view-section-title">Job activity ({workHistoryLoading ? '…' : workHistory.length})</h3>

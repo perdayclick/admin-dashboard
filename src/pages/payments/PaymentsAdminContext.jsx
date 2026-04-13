@@ -26,21 +26,39 @@ export function PaymentsAdminProvider({ children }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const jobIdFromUrl = searchParams.get('jobId') || ''
+  const payerUserIdFromUrl = searchParams.get('payerUserId') || ''
+  const workerIdFromUrl = searchParams.get('workerId') || ''
+  const groupByJobFromUrl = searchParams.get('groupByJob') || ''
+  const jobEarningsOnlyFromUrl = searchParams.get('jobEarningsOnly') || ''
 
   const [stats, setStats] = useState(null)
   const [statsLoading, setStatsLoading] = useState(false)
   const [statsError, setStatsError] = useState('')
 
   const [rows, setRows] = useState([])
+  /** Admin: one card per job (GET /payment/admin/all?groupByJob=true) */
+  const [jobGroups, setJobGroups] = useState([])
+  const [txViewMode, setTxViewMode] = useState('flat')
   const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, pages: 0 })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [payoutFilter, setPayoutFilter] = useState('')
+  const [paymentTypeFilter, setPaymentTypeFilter] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [jobIdFilter, setJobIdFilter] = useState(jobIdFromUrl)
+  const [payerUserIdFilter, setPayerUserIdFilter] = useState(payerUserIdFromUrl)
+  const [workerIdFilter, setWorkerIdFilter] = useState(workerIdFromUrl)
+  const [jobEarningsOnlyFilter, setJobEarningsOnlyFilter] = useState(
+    () => jobEarningsOnlyFromUrl === 'true' || jobEarningsOnlyFromUrl === '1'
+  )
+  /** Transactions hub: search box (submitted to API — employer/worker/job/PAY-id) */
+  const [txSearchInput, setTxSearchInput] = useState('')
+  const [txSearchQuery, setTxSearchQuery] = useState('')
+  /** all | failed_payout | open_dispute | pending_cash */
+  const [txQuickFilter, setTxQuickFilter] = useState('all')
   const [triggerLoading, setTriggerLoading] = useState(false)
   const [retryFailedLoading, setRetryFailedLoading] = useState(false)
   const [retryingPaymentId, setRetryingPaymentId] = useState(null)
@@ -76,6 +94,29 @@ export function PaymentsAdminProvider({ children }) {
     if (jobIdFromUrl) setJobIdFilter(jobIdFromUrl)
   }, [jobIdFromUrl])
 
+  useEffect(() => {
+    if (payerUserIdFromUrl) setPayerUserIdFilter(payerUserIdFromUrl)
+  }, [payerUserIdFromUrl])
+
+  useEffect(() => {
+    if (workerIdFromUrl) setWorkerIdFilter(workerIdFromUrl)
+  }, [workerIdFromUrl])
+
+  useEffect(() => {
+    if (groupByJobFromUrl === 'true' || groupByJobFromUrl === '1') {
+      setTxViewMode('grouped')
+    }
+  }, [groupByJobFromUrl])
+
+  useEffect(() => {
+    if (jobEarningsOnlyFromUrl === 'true' || jobEarningsOnlyFromUrl === '1') {
+      setJobEarningsOnlyFilter(true)
+    }
+    if (jobEarningsOnlyFromUrl === 'false' || jobEarningsOnlyFromUrl === '0') {
+      setJobEarningsOnlyFilter(false)
+    }
+  }, [jobEarningsOnlyFromUrl])
+
   const fetchStats = useCallback(async () => {
     setStatsLoading(true)
     setStatsError('')
@@ -95,38 +136,111 @@ export function PaymentsAdminProvider({ children }) {
       setError('')
       setSuccess('')
       const trimmedJob = jobIdFilter.trim()
+      const trimmedPayer = payerUserIdFilter.trim()
+      const trimmedWorker = workerIdFilter.trim()
       if (trimmedJob && !isMongoObjectIdString(trimmedJob)) {
         setError('Job ID must be 24 hex characters (copy from the job URL).')
         setRows([])
+        setJobGroups([])
         setPagination((p) => ({ ...p, total: 0, pages: 0 }))
         setLoading(false)
         return
       }
+      if (trimmedPayer && !isMongoObjectIdString(trimmedPayer)) {
+        setError('Payer user ID must be a valid 24-character Mongo id.')
+        setRows([])
+        setJobGroups([])
+        setPagination((p) => ({ ...p, total: 0, pages: 0 }))
+        setLoading(false)
+        return
+      }
+      if (trimmedWorker && !isMongoObjectIdString(trimmedWorker)) {
+        setError('Worker ID must be a valid 24-character Mongo id.')
+        setRows([])
+        setJobGroups([])
+        setPagination((p) => ({ ...p, total: 0, pages: 0 }))
+        setLoading(false)
+        return
+      }
+      let effStatus = statusFilter || undefined
+      let effPayout = payoutFilter || undefined
+      let effType = paymentTypeFilter || undefined
+      let effDispute = undefined
+      if (txQuickFilter === 'failed_payout') {
+        effStatus = 'captured'
+        effPayout = 'failed'
+        effType = 'ONLINE'
+      } else if (txQuickFilter === 'open_dispute') {
+        effDispute = 'open'
+      } else if (txQuickFilter === 'pending_cash') {
+        effType = 'CASH'
+        effPayout = 'pending'
+      }
+
       try {
         const res = await paymentApi.listAdminAll({
-          page, limit: PAGE_SIZE,
-          status: statusFilter || undefined,
-          payoutStatus: payoutFilter || undefined,
+          page,
+          limit: PAGE_SIZE,
+          status: effStatus,
+          payoutStatus: effPayout,
+          paymentType: effType,
+          disputeStatus: effDispute,
           startDate: startDate || undefined,
           endDate: endDate || undefined,
           jobId: trimmedJob || undefined,
+          payerUserId: trimmedPayer || undefined,
+          workerId: trimmedWorker || undefined,
+          jobEarningsOnly: jobEarningsOnlyFilter,
+          groupByJob: txViewMode === 'grouped',
+          search: txSearchQuery.trim() || undefined,
         })
+        const mode = res?.mode || 'flat'
         const list = Array.isArray(res?.data) ? res.data : []
         const total = typeof res?.total === 'number' ? res.total : 0
         const pages = typeof res?.pages === 'number' ? res.pages : 0
         const currentPage = typeof res?.page === 'number' ? res.page : page
-        setRows(list)
-        setPagination((p) => ({ ...p, page: currentPage, total, pages: pages || (total ? Math.ceil(total / p.limit) : 0) }))
+        if (mode === 'grouped_by_job') {
+          setJobGroups(list)
+          setRows([])
+        } else {
+          setRows(list)
+          setJobGroups([])
+        }
+        setPagination((p) => ({
+          ...p,
+          page: currentPage,
+          total,
+          pages: pages || (total ? Math.ceil(total / p.limit) : 0),
+        }))
       } catch (err) {
         setError(getErrorMessage(err, 'Failed to load payments'))
         setPagination((p) => ({ ...p, total: 0, pages: 0 }))
         setRows([])
+        setJobGroups([])
       } finally {
         setLoading(false)
       }
     },
-    [statusFilter, payoutFilter, startDate, endDate, jobIdFilter]
+    [
+      statusFilter,
+      payoutFilter,
+      paymentTypeFilter,
+      startDate,
+      endDate,
+      jobIdFilter,
+      payerUserIdFilter,
+      workerIdFilter,
+      jobEarningsOnlyFilter,
+      txViewMode,
+      txSearchQuery,
+      txQuickFilter,
+    ]
   )
+
+  const submitTxSearch = useCallback(() => {
+    setTxSearchQuery(txSearchInput.trim())
+    setPagination((p) => ({ ...p, page: 1 }))
+  }, [txSearchInput])
 
   const fetchDisputeList = useCallback(
     async (page = 1) => {
@@ -291,12 +405,30 @@ export function PaymentsAdminProvider({ children }) {
       setStatusFilter,
       payoutFilter,
       setPayoutFilter,
+      paymentTypeFilter,
+      setPaymentTypeFilter,
+      txViewMode,
+      setTxViewMode,
+      jobGroups,
       startDate,
       setStartDate,
       endDate,
       setEndDate,
       jobIdFilter,
       setJobIdFilter,
+      payerUserIdFilter,
+      setPayerUserIdFilter,
+      workerIdFilter,
+      setWorkerIdFilter,
+      jobEarningsOnlyFilter,
+      setJobEarningsOnlyFilter,
+      txSearchInput,
+      setTxSearchInput,
+      txSearchQuery,
+      setTxSearchQuery,
+      txQuickFilter,
+      setTxQuickFilter,
+      submitTxSearch,
       triggerLoading,
       retryFailedLoading,
       retryingPaymentId,
@@ -344,9 +476,19 @@ export function PaymentsAdminProvider({ children }) {
       success,
       statusFilter,
       payoutFilter,
+      paymentTypeFilter,
+      txViewMode,
+      jobGroups,
       startDate,
       endDate,
       jobIdFilter,
+      payerUserIdFilter,
+      workerIdFilter,
+      jobEarningsOnlyFilter,
+      txSearchInput,
+      txSearchQuery,
+      txQuickFilter,
+      submitTxSearch,
       triggerLoading,
       retryFailedLoading,
       retryingPaymentId,

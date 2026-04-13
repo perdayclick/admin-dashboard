@@ -11,6 +11,7 @@ import {
 } from '../utils/format'
 import { hasAnyKycImages, getAllKycImageItems } from '../utils/kycImages'
 import { PageHeader, Alert, Button } from '../components/ui'
+import { EmployerDetailPaymentHistory } from '../components/DetailPaymentTransactionHistory'
 import KycImageVerificationModal from '../components/KycImageVerificationModal'
 import '../styles/ManagementPage.css'
 
@@ -121,6 +122,7 @@ export default function EmployerDetail() {
   }
 
   const u = employer?.userId || employer?.user
+  const payerUserIdForLedger = u && (typeof u === 'object' && u._id != null ? String(u._id) : String(u))
   const phone = u?.phone ?? employer?.phone ?? '—'
   const email = u?.email ?? employer?.email ?? '—'
   const kyc = employer?.kyc
@@ -396,6 +398,10 @@ export default function EmployerDetail() {
             </div>
           </section>
         )}
+
+        {payerUserIdForLedger ? (
+          <EmployerDetailPaymentHistory payerUserId={payerUserIdForLedger} />
+        ) : null}
 
         <section className="job-view-card detail-page-jobs-section employer-detail-jobs-bottom">
           <h3 className="view-section-title">Jobs posted ({postedJobsLoading ? '…' : postedJobsTotal})</h3>
