@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import './MainLayout.css'
 
 const PAYMENT_SIDEBAR_CHILDREN = [
-  { to: '/payments/overview', section: 'overview', label: 'Overview' },
+  // { to: '/payments/overview', section: 'overview', label: 'Overview' },
   { to: '/payments/transactions', section: 'transactions', label: 'Transactions' },
   { to: '/payments/payouts', section: 'payouts', label: 'Payout Cron' },
   { to: '/payments/disputes', section: 'disputes', label: 'Disputes' },
