@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useSearchParams } from 'react-router-dom'
 import {
   PAYMENT_STATUS_OPTIONS,
   PAYOUT_STATUS_OPTIONS,
@@ -46,6 +46,7 @@ function shortenTxId(id) {
 }
 
 export default function PaymentsTransactionsPage() {
+  const [searchParams] = useSearchParams()
   const {
     stats: s,
     statsLoading,
@@ -67,9 +68,12 @@ export default function PaymentsTransactionsPage() {
 
   const sn = s?.adminSnapshot
 
+  /** Deep links (e.g. employer detail → full ledger) use groupByJob=true; do not override that with flat. */
   useEffect(() => {
+    const g = searchParams.get('groupByJob')
+    if (g === 'true' || g === '1') return
     setTxViewMode('flat')
-  }, [setTxViewMode])
+  }, [setTxViewMode, searchParams])
 
   useEffect(() => {
     fetchList(pagination.page)

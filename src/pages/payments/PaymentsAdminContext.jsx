@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -38,7 +39,9 @@ export function PaymentsAdminProvider({ children }) {
   const [rows, setRows] = useState([])
   /** Admin: one card per job (GET /payment/admin/all?groupByJob=true) */
   const [jobGroups, setJobGroups] = useState([])
-  const [txViewMode, setTxViewMode] = useState('flat')
+  const [txViewMode, setTxViewMode] = useState(() =>
+    groupByJobFromUrl === 'true' || groupByJobFromUrl === '1' ? 'grouped' : 'flat'
+  )
   const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, pages: 0 })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -81,6 +84,9 @@ export function PaymentsAdminProvider({ children }) {
   const [disputeJobFilter, setDisputeJobFilter] = useState('')
   const [disputeStartDate, setDisputeStartDate] = useState('')
   const [disputeEndDate, setDisputeEndDate] = useState('')
+
+  /** Ignore stale list responses when txViewMode / filters change and triggers overlapping fetches. */
+  const listFetchGen = useRef(0)
 
   useEffect(() => {
     if (!disputeModal) setDisputeResolutionNotes('')
@@ -132,6 +138,8 @@ export function PaymentsAdminProvider({ children }) {
 
   const fetchList = useCallback(
     async (page = 1) => {
+      const gen = ++listFetchGen.current
+      const sentGroupByJob = txViewMode === 'grouped'
       setLoading(true)
       setError('')
       setSuccess('')
@@ -143,7 +151,7 @@ export function PaymentsAdminProvider({ children }) {
         setRows([])
         setJobGroups([])
         setPagination((p) => ({ ...p, total: 0, pages: 0 }))
-        setLoading(false)
+        if (gen === listFetchGen.current) setLoading(false)
         return
       }
       if (trimmedPayer && !isMongoObjectIdString(trimmedPayer)) {
@@ -151,7 +159,7 @@ export function PaymentsAdminProvider({ children }) {
         setRows([])
         setJobGroups([])
         setPagination((p) => ({ ...p, total: 0, pages: 0 }))
-        setLoading(false)
+        if (gen === listFetchGen.current) setLoading(false)
         return
       }
       if (trimmedWorker && !isMongoObjectIdString(trimmedWorker)) {
@@ -159,7 +167,7 @@ export function PaymentsAdminProvider({ children }) {
         setRows([])
         setJobGroups([])
         setPagination((p) => ({ ...p, total: 0, pages: 0 }))
-        setLoading(false)
+        if (gen === listFetchGen.current) setLoading(false)
         return
       }
       let effStatus = statusFilter || undefined
@@ -191,14 +199,21 @@ export function PaymentsAdminProvider({ children }) {
           payerUserId: trimmedPayer || undefined,
           workerId: trimmedWorker || undefined,
           jobEarningsOnly: jobEarningsOnlyFilter,
-          groupByJob: txViewMode === 'grouped',
+          groupByJob: sentGroupByJob,
           search: txSearchQuery.trim() || undefined,
         })
+        if (gen !== listFetchGen.current) return
+
         const mode = res?.mode || 'flat'
         const list = Array.isArray(res?.data) ? res.data : []
         const total = typeof res?.total === 'number' ? res.total : 0
         const pages = typeof res?.pages === 'number' ? res.pages : 0
         const currentPage = typeof res?.page === 'number' ? res.page : page
+
+        if (sentGroupByJob && mode !== 'grouped_by_job' && list.length > 0) {
+          setTxViewMode('flat')
+        }
+
         if (mode === 'grouped_by_job') {
           setJobGroups(list)
           setRows([])
@@ -213,12 +228,13 @@ export function PaymentsAdminProvider({ children }) {
           pages: pages || (total ? Math.ceil(total / p.limit) : 0),
         }))
       } catch (err) {
+        if (gen !== listFetchGen.current) return
         setError(getErrorMessage(err, 'Failed to load payments'))
         setPagination((p) => ({ ...p, total: 0, pages: 0 }))
         setRows([])
         setJobGroups([])
       } finally {
-        setLoading(false)
+        if (gen === listFetchGen.current) setLoading(false)
       }
     },
     [
