@@ -144,6 +144,7 @@ export const jobsApi = {
     if (params.workType) sp.set('workType', params.workType)
     if (params.employerId) sp.set('employerId', params.employerId)
     if (params.search) sp.set('search', params.search)
+    if (params.lang) sp.set('lang', params.lang)
     const q = sp.toString()
     return apiRequest(`/api/job${q ? `?${q}` : ''}`)
   },
@@ -154,14 +155,32 @@ export const jobsApi = {
     if (params.limit) sp.set('limit', params.limit)
     if (params.status) sp.set('status', params.status)
     if (params.workType) sp.set('workType', params.workType)
+    if (params.lang) sp.set('lang', params.lang)
     const q = sp.toString()
     return apiRequest(`/api/job/employer/${encodeURIComponent(employerId)}${q ? `?${q}` : ''}`)
   },
-  get: (jobId) => apiRequest(`/api/job/${jobId}`),
+  /** @param {string} jobId @param {{ lang?: string, includeAllTranslations?: boolean }} [query] */
+  get: (jobId, query = {}) => {
+    const sp = new URLSearchParams()
+    if (query.lang) sp.set('lang', query.lang)
+    if (query.includeAllTranslations) sp.set('includeAllTranslations', 'true')
+    const q = sp.toString()
+    return apiRequest(`/api/job/${encodeURIComponent(jobId)}${q ? `?${q}` : ''}`)
+  },
+  translationLocales: () => apiRequest('/api/job/translation-locales'),
   create: (body) =>
     apiRequest('/api/job', { method: 'POST', body: JSON.stringify(body) }),
-  update: (jobId, body) =>
-    apiRequest(`/api/job/${jobId}`, { method: 'PUT', body: JSON.stringify(body) }),
+  /** @param {string} jobId @param {object} body @param {{ lang?: string, includeAllTranslations?: boolean }} [query] */
+  update: (jobId, body, query = {}) => {
+    const sp = new URLSearchParams()
+    if (query.lang) sp.set('lang', query.lang)
+    if (query.includeAllTranslations) sp.set('includeAllTranslations', 'true')
+    const qs = sp.toString()
+    return apiRequest(`/api/job/${encodeURIComponent(jobId)}${qs ? `?${qs}` : ''}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    })
+  },
   delete: (jobId) =>
     apiRequest(`/api/job/${jobId}`, { method: 'DELETE' }),
   setStatus: (jobId, status) =>

@@ -19,6 +19,8 @@ import JobForm from '../components/JobForm'
 import ConfirmModal from '../components/ConfirmModal'
 import '../styles/ManagementPage.css'
 
+const ADMIN_JOB_LANG_KEY = 'admin_job_preview_lang'
+
 export default function Jobs() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -39,6 +41,8 @@ export default function Jobs() {
   const [employers, setEmployers] = useState([])
   const [skills, setSkills] = useState([])
   const [statusLoadingId, setStatusLoadingId] = useState(null)
+  const [viewLang, setViewLang] = useState(() => localStorage.getItem(ADMIN_JOB_LANG_KEY) || 'en')
+  const [locales, setLocales] = useState([])
 
   const fetchJobs = useCallback(async (page = 1) => {
     setLoading(true)
@@ -51,6 +55,7 @@ export default function Jobs() {
         workType: workTypeFilter || undefined,
         employerId: employerFilter || undefined,
         search: search.trim() || undefined,
+        lang: viewLang || undefined,
       })
       const payload = res?.data ?? res
       const jobList = payload?.jobs ?? payload ?? []
@@ -63,7 +68,7 @@ export default function Jobs() {
     } finally {
       setLoading(false)
     }
-  }, [statusFilter, workTypeFilter, employerFilter, search])
+  }, [statusFilter, workTypeFilter, employerFilter, search, viewLang])
 
   useEffect(() => {
     if (employerIdFromUrl) setEmployerFilter(employerIdFromUrl)
@@ -89,6 +94,19 @@ export default function Jobs() {
     return () => { cancelled = true }
   }, [])
 
+  useEffect(() => {
+    localStorage.setItem(ADMIN_JOB_LANG_KEY, viewLang)
+  }, [viewLang])
+
+  useEffect(() => {
+    let cancelled = false
+    jobsApi.translationLocales().then((res) => {
+      const raw = res?.data?.locales ?? res?.locales
+      if (!cancelled && Array.isArray(raw)) setLocales(raw)
+    }).catch(() => { if (!cancelled) setLocales([]) })
+    return () => { cancelled = true }
+  }, [])
+
   const handleCreate = async (values) => {
     setFormError('')
     setSubmitting(true)
@@ -107,7 +125,7 @@ export default function Jobs() {
     setFormError('')
     setSubmitting(true)
     try {
-      await jobsApi.update(jobId, values)
+      await jobsApi.update(jobId, values, { lang: viewLang })
       setEditJob(null)
       fetchJobs(pagination.page)
     } catch (err) {
@@ -229,6 +247,20 @@ export default function Jobs() {
                 <option key={o.value || 'all'} value={o.value}>{o.label}</option>
               ))}
             </select>
+            <label className="mgmt-select-wrap" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', color: '#374151' }}>
+              Language
+              <select
+                value={viewLang}
+                onChange={(e) => { setViewLang(e.target.value); setPagination((p) => ({ ...p, page: 1 })); }}
+                className="mgmt-select"
+                aria-label="Preview language for job title"
+                style={{ minWidth: 140 }}
+              >
+                {(locales.length ? locales : [{ code: 'en', label: 'English' }]).map((l) => (
+                  <option key={l.code} value={l.code}>{l.label}</option>
+                ))}
+              </select>
+            </label>
             <Button variant="primary" onClick={() => fetchJobs(1)} disabled={loading}>
               {loading ? 'Refreshing…' : 'Apply'}
             </Button>
