@@ -22,6 +22,8 @@ import WaivePenaltyModal from '../components/WaivePenaltyModal'
 import '../styles/ManagementPage.css'
 import '../components/Modal.css'
 
+const ADMIN_JOB_LANG_KEY = 'admin_job_preview_lang'
+
 const CANCELLATION_REASON_LABELS = {
   [CANCELLATION_REASON.NOT_FIT]: 'Not fit for job',
   [CANCELLATION_REASON.CHANGED_PLAN]: 'Changed plan',
@@ -204,6 +206,8 @@ export default function JobDetail() {
   const [reactivateDate, setReactivateDate] = useState('')
   const [reactivateTime, setReactivateTime] = useState('')
   const [reactivateSubmitting, setReactivateSubmitting] = useState(false)
+  const [viewLang, setViewLang] = useState(() => localStorage.getItem(ADMIN_JOB_LANG_KEY) || 'en')
+  const [locales, setLocales] = useState([])
 
   const loadPenalties = useCallback(() => {
     if (!jobId) return
@@ -224,8 +228,24 @@ export default function JobDetail() {
   }, [jobId])
 
   useEffect(() => {
+    localStorage.setItem(ADMIN_JOB_LANG_KEY, viewLang)
+  }, [viewLang])
+
+  useEffect(() => {
     let cancelled = false
-    jobsApi.get(jobId).then((res) => {
+    jobsApi.translationLocales().then((res) => {
+      const raw = res?.data?.locales ?? res?.locales
+      if (!cancelled && Array.isArray(raw)) setLocales(raw)
+    }).catch(() => { if (!cancelled) setLocales([]) })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    if (!jobId) return
+    let cancelled = false
+    setLoading(true)
+    setError('')
+    jobsApi.get(jobId, { lang: viewLang, includeAllTranslations: true }).then((res) => {
       if (!cancelled) {
         const payload = res?.data ?? res
         setJob(payload)
@@ -234,7 +254,7 @@ export default function JobDetail() {
       if (!cancelled) setError(getErrorMessage(err, 'Failed to load job'))
     }).finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [jobId])
+  }, [jobId, viewLang])
 
   useEffect(() => {
     let cancelled = false
@@ -269,7 +289,7 @@ export default function JobDetail() {
     setFormError('')
     setSubmitting(true)
     try {
-      const res = await jobsApi.update(jobId, values)
+      const res = await jobsApi.update(jobId, values, { lang: viewLang, includeAllTranslations: true })
       setJob(res?.data ?? res)
       setEditOpen(false)
     } catch (err) {
@@ -507,7 +527,7 @@ export default function JobDetail() {
         employerId,
         status: JOB_STATUS.LIVE,
         listingEndsAt,
-      })
+      }, { lang: viewLang, includeAllTranslations: true })
       setJob((res?.data ?? res) || job)
       setReactivateOpen(false)
     } catch (err) {
@@ -632,10 +652,38 @@ export default function JobDetail() {
 
       {error && <Alert variant="error" className="mgmt-alert">{error}</Alert>}
 
+      <div className="mgmt-lang-bar" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#374151' }}>
+          Preview language
+          <select
+            value={viewLang}
+            onChange={(e) => setViewLang(e.target.value)}
+            className="mgmt-select"
+            aria-label="Preview language for title and description"
+            style={{ minWidth: 160 }}
+          >
+            {(locales.length ? locales : [{ code: 'en', label: 'English' }]).map((l) => (
+              <option key={l.code} value={l.code}>{l.label}</option>
+            ))}
+          </select>
+        </label>
+        {job && (
+          <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+            Resolved <strong>{job.resolvedLang || '—'}</strong>
+            {job.sourceLang != null && job.sourceLang !== '' && (
+              <> · Source <strong>{job.sourceLang}</strong></>
+            )}
+            {job.translationStatus != null && job.translationStatus !== '' && (
+              <> · Status <strong>{job.translationStatus}</strong></>
+            )}
+          </span>
+        )}
+      </div>
+
       {/* Hero: title + status + posted */}
       <div className="job-view-hero">
         <div className="job-view-hero-main">
-          <h2 className="job-view-title">{job?.jobTitle.toUpperCase() || '—'}</h2>
+          <h2 className="job-view-title">{(job?.jobTitle || '—').toUpperCase()}</h2>
           <span className={`mgmt-badge ${jobStatusBadgeClass(job?.status)}`}>{jobStatusLabel(job?.status)}</span>
         </div>
         <p className="job-view-posted">Posted {formatPosted(job?.createdAt)} - By {employerName}</p>
@@ -792,6 +840,29 @@ export default function JobDetail() {
             <div className="view-row view-row-full">
               <span className="view-label">Description</span>
               <span className="view-value job-view-desc" style={{ whiteSpace: 'pre-wrap' }}>{job.jobDescription}</span>
+            </div>
+          )}
+          {job?.content && typeof job.content === 'object' && Object.keys(job.content).length > 0 && (
+            <div className="view-row view-row-full">
+              <span className="view-label">All translations</span>
+              <details className="view-value" style={{ width: '100%' }}>
+                <summary style={{ cursor: 'pointer', color: '#4b5563' }}>
+                  Show per-locale title &amp; description ({Object.keys(job.content).length})
+                </summary>
+                <pre
+                  style={{
+                    marginTop: '0.5rem',
+                    fontSize: '0.7rem',
+                    overflow: 'auto',
+                    maxHeight: 280,
+                    background: '#f9fafb',
+                    padding: '0.5rem',
+                    borderRadius: 6,
+                  }}
+                >
+                  {JSON.stringify(job.content, null, 2)}
+                </pre>
+              </details>
             </div>
           )}
         </section>
