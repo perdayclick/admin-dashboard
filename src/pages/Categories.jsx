@@ -16,6 +16,8 @@ import CategoryForm from '../components/CategoryForm'
 import ConfirmModal from '../components/ConfirmModal'
 import '../styles/ManagementPage.css'
 
+
+
 function getStatus(cat) {
   return cat?.isActive ? { label: 'Active', statusKey: 'active' } : { label: 'Inactive', statusKey: 'inactive' }
 }
@@ -54,6 +56,7 @@ export default function Categories() {
 
   useEffect(() => {
     fetchCategories(pagination.page)
+    console.log('fetching categories with search:')
   }, [fetchCategories, pagination.page])
 
   const handleSearchSubmit = (e) => {
@@ -69,6 +72,7 @@ export default function Categories() {
       await categoriesApi.create(values)
       setCreateOpen(false)
       fetchCategories(pagination.page)
+      console.log('Created category with values:', values)
     } catch (err) {
       setFormError(getErrorMessage(err, 'Create failed'))
     } finally {
