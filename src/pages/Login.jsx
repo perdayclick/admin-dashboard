@@ -25,9 +25,11 @@ export default function Login() {
   }
 
   async function handleSubmit(e) {
+    console.log('handleSubmit')
     e.preventDefault()
     setError('')
     setLoading(true)
+    console.log(email, password)
     try {
       const res = await authApi.login(email.trim(), password)
       const { user, accessToken, refreshToken, expiresAt } = res.data
